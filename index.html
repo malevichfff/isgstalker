@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISG — International Scientific Group</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+    background: #0a0a0a;
+    color: #00ff41;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+body {
+    background:
+        linear-gradient(rgba(10,10,10,0.88), rgba(10,10,10,0.92)),
+        url('bg.jpg') center/cover no-repeat fixed;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 3px);
+    pointer-events: none;
+    z-index: 9999;
+}
+
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 9998;
+}
+
+a { color: #00ff41; text-decoration: none; }
+a:hover { color: #ffb000; }
+
+header {
+    border-bottom: 1px solid #00ff41;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: rgba(10,10,10,0.95);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 0 15px rgba(0,255,65,0.2);
+}
+
+.logo {
+    font-size: 28px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    color: #00ff41;
+    text-shadow: 0 0 5px #00ff41, 0 0 10px #00ff41, 0 0 20px #00ff41;
+    cursor: pointer;
+}
+
+.status-bar { display: flex; gap: 15px; flex-wrap: wrap; font-size: 12px; }
+.status-item { padding: 4px 10px; border: 1px solid #00ff41; background: rgba(0,255,65,0.05); }
+.status-item.online { color: #00ff41; border-color: #00ff41; }
+.status-item.warn { color: #ffb000; border-color: #ffb000; }
+.status-item.danger { color: #ff0033; border-color: #ff0033; }
+.status-item.cloud { color: #00ccff; border-color: #00ccff; }
+.status-item.syncing { color: #ffb000; border-color: #ffb000; animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: 0.5; } }
+.blink { animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+nav {
+    background: rgba(13,13,13,0.95);
+    border-bottom: 1px dashed #00ff41;
+    padding: 8px 20px;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.tab-btn {
+    background: transparent;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.tab-btn:hover { background: rgba(0,255,65,0.15); box-shadow: 0 0 8px rgba(0,255,65,0.5); }
+.tab-btn.active { background: #00ff41; color: #0a0a0a; font-weight: bold; box-shadow: 0 0 10px #00ff41; }
+.tab-btn.admin { border-color: #ffb000; color: #ffb000; }
+.tab-btn.admin:hover { background: rgba(255,176,0,0.15); }
+.tab-btn.admin.active { background: #ffb000; color: #0a0a0a; }
+
+.nav-spacer { flex: 1; }
+.auth-btn { background: transparent; color: #ffb000; border: 1px solid #ffb000; padding: 6px 14px; font-family: inherit; cursor: pointer; text-transform: uppercase; }
+.auth-btn:hover { background: rgba(255,176,0,0.15); }
+.auth-btn.logout { color: #ff0033; border-color: #ff0033; }
+.auth-btn.logout:hover { background: rgba(255,0,51,0.15); }
+
+main { padding: 25px 20px; max-width: 1200px; margin: 0 auto; min-height: 60vh; background: rgba(10,10,10,0.7); }
+
+.ascii-box { border: 1px solid #00ff41; padding: 20px; margin-bottom: 20px; position: relative; background: rgba(0,255,65,0.02); white-space: pre-wrap; color: #00ff41; }
+.ascii-box::before { content: attr(data-title); position: absolute; top: -10px; left: 15px; background: #0a0a0a; padding: 0 8px; color: #00ff41; font-size: 12px; letter-spacing: 2px; }
+.ascii-box.warn { border-color: #ffb000; color: #ffb000; }
+.ascii-box.warn::before { color: #ffb000; }
+.ascii-box.danger { border-color: #ff0033; color: #ff0033; }
+.ascii-box.danger::before { color: #ff0033; }
+
+h1, h2, h3 { color: #00ff41; margin-bottom: 15px; letter-spacing: 2px; }
+h1 { font-size: 22px; text-shadow: 0 0 5px #00ff41; }
+h2 { font-size: 18px; }
+h3 { font-size: 15px; color: #ffb000; }
+p { margin-bottom: 10px; }
+
+form, .form-block { border: 1px dashed #00ff41; padding: 15px; margin-bottom: 20px; background: rgba(0,255,65,0.02); }
+label { display: block; margin-bottom: 5px; color: #ffb000; font-size: 12px; letter-spacing: 1px; }
+input, textarea, select { width: 100%; background: #0a0a0a; color: #00ff41; border: 1px solid #00ff41; padding: 8px; font-family: inherit; font-size: 14px; margin-bottom: 10px; outline: none; }
+input:focus, textarea:focus, select:focus { border-color: #ffb000; box-shadow: 0 0 5px rgba(255,176,0,0.5); }
+textarea { min-height: 80px; resize: vertical; }
+
+button.btn { background: #00ff41; color: #0a0a0a; border: none; padding: 8px 18px; font-family: inherit; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; }
+button.btn:hover { background: #ffb000; box-shadow: 0 0 10px #ffb000; }
+button.btn.danger { background: #ff0033; color: #fff; }
+button.btn.danger:hover { background: #ff0033; box-shadow: 0 0 10px #ff0033; }
+button.btn.warn { background: #ffb000; color: #0a0a0a; }
+button.btn.warn:hover { background: #ff0033; }
+button.btn.cloud { background: #00ccff; color: #0a0a0a; }
+button.btn.cloud:hover { background: #00ffcc; box-shadow: 0 0 10px #00ccff; }
+button.btn.small { padding: 4px 10px; font-size: 11px; }
+
+table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13px; }
+th, td { border: 1px solid #00ff41; padding: 8px; text-align: left; vertical-align: top; color: #00ff41; }
+th { background: rgba(0,255,65,0.1); color: #ffb000; letter-spacing: 1px; text-transform: uppercase; font-size: 11px; }
+tr:hover td { background: rgba(0,255,65,0.05); }
+
+.report { border: 1px solid #00ff41; padding: 15px; margin-bottom: 15px; background: rgba(0,255,65,0.02); position: relative; }
+.report .meta { font-size: 11px; color: #ffb000; margin-bottom: 10px; letter-spacing: 1px; border-bottom: 1px dashed #00ff41; padding-bottom: 8px; }
+.report .title { color: #00ff41; font-weight: bold; margin-bottom: 8px; font-size: 15px; }
+.report .body { white-space: pre-wrap; color: #c0ffc0; }
+.report .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+.report.restricted { border-color: #ffb000; background: rgba(255,176,0,0.03); }
+.report.restricted .title { color: #ffb000; }
+
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+.modal.open { display: flex; }
+.modal-content { background: #0a0a0a; border: 2px solid #00ff41; padding: 25px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 30px rgba(0,255,65,0.4); position: relative; color: #00ff41; }
+.modal-content.warn { border-color: #ffb000; box-shadow: 0 0 30px rgba(255,176,0,0.4); }
+.modal-close { position: absolute; top: 10px; right: 15px; background: transparent; border: none; color: #ff0033; font-size: 20px; cursor: pointer; font-family: inherit; z-index: 10; }
+
+.photo-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 2000; justify-content: center; align-items: center; padding: 20px; cursor: zoom-out; }
+.photo-modal.open { display: flex; }
+.photo-modal img { max-width: 90vw; max-height: 90vh; border: 2px solid #00ff41; box-shadow: 0 0 40px rgba(0,255,65,0.5); object-fit: contain; }
+.photo-modal .photo-info { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #00ff41; font-family: 'Consolas', monospace; font-size: 14px; text-shadow: 0 0 5px #00ff41; background: rgba(0,0,0,0.8); padding: 8px 16px; border: 1px solid #00ff41; }
+.photo-modal .photo-close { position: absolute; top: 20px; right: 30px; background: transparent; border: 1px solid #ff0033; color: #ff0033; font-size: 24px; cursor: pointer; padding: 5px 12px; font-family: inherit; }
+.photo-modal .photo-close:hover { background: #ff0033; color: #0a0a0a; }
+
+.photo-thumb { width: 60px; height: 60px; border: 1px solid #00ff41; object-fit: cover; background: #0a0a0a; cursor: zoom-in; transition: all 0.2s; }
+.photo-thumb:hover { border-color: #ffb000; box-shadow: 0 0 10px rgba(255,176,0,0.6); transform: scale(1.05); }
+.photo-preview { width: 80px; height: 80px; border: 1px solid #00ff41; object-fit: cover; background: #0a0a0a; margin-top: 5px; }
+
+.artifact-card { border: 1px solid #00ff41; padding: 15px; margin-bottom: 15px; background: rgba(0,255,65,0.03); }
+.artifact-card .artifact-name { color: #00ff41; font-weight: bold; font-size: 16px; margin-bottom: 10px; text-shadow: 0 0 5px #00ff41; }
+.artifact-card .artifact-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; font-size: 12px; }
+.artifact-card .stat { display: flex; justify-content: space-between; padding: 4px 8px; border: 1px solid rgba(0,255,65,0.3); background: rgba(0,255,65,0.02); }
+.artifact-card .stat-label { color: #ffb000; }
+.artifact-card .stat-value { font-weight: bold; }
+.artifact-card .stat-value.positive { color: #00ff41; }
+.artifact-card .stat-value.negative { color: #ff0033; }
+.artifact-card .actions { margin-top: 10px; display: flex; gap: 8px; }
+
+.stat-input { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.stat-input label { flex: 1; margin: 0; }
+.stat-input input { flex: 0 0 100px; margin: 0; }
+
+.calculator { border: 2px solid #ffb000; padding: 20px; margin: 20px 0; background: rgba(255,176,0,0.03); }
+.calculator h3 { color: #ffb000; margin-bottom: 15px; }
+
+.calc-item { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; padding: 10px; border: 1px solid #ffb000; background: rgba(255,176,0,0.02); }
+.calc-item select { flex: 2; margin: 0; }
+.calc-item input { flex: 1; margin: 0; max-width: 100px; }
+.calc-item .item-price { flex: 1; color: #00ff41; font-weight: bold; text-align: right; }
+
+.calc-percent-row { display: flex; gap: 10px; align-items: center; margin: 15px 0; padding: 10px; border: 1px dashed #ff0033; background: rgba(255,0,51,0.03); }
+.calc-percent-row label { margin: 0; flex-shrink: 0; }
+.calc-percent-row input { max-width: 120px; margin: 0; }
+.calc-percent-row .percent-info { color: #ff0033; font-size: 12px; }
+
+.calc-total { margin-top: 15px; padding: 15px; border: 2px solid #00ff41; background: rgba(0,255,65,0.05); font-size: 16px; color: #00ff41; font-weight: bold; }
+.calc-total .total-line { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.calc-total .total-line.sub { color: #ff0033; font-size: 14px; }
+.calc-total .total-line.final { border-top: 1px dashed #00ff41; padding-top: 8px; margin-top: 8px; font-size: 20px; text-shadow: 0 0 5px #00ff41; color: #00ff41; }
+
+.group-header { background: rgba(255,176,0,0.1); border: 1px solid #ffb000; padding: 10px 15px; margin: 20px 0 0 0; color: #ffb000; font-weight: bold; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
+.group-header:hover { background: rgba(255,176,0,0.2); }
+.group-header .group-title::before { content: "▸ "; }
+.group-header .group-count { font-size: 12px; color: #00ff41; margin-right: 10px; }
+.group-header .group-toggle { font-size: 14px; color: #00ff41; min-width: 20px; text-align: center; }
+.group-content { overflow: hidden; transition: max-height 0.3s ease; }
+.group-content.collapsed { max-height: 0 !important; }
+.group-content table { margin: 0 0 10px 0; }
+.group-header.is-collapsed { border-bottom: 1px dashed #ffb000; }
+.group-header.is-collapsed .group-title::before { content: "▾ "; }
+.group-controls { margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+.activation-code {
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    font-weight: bold;
+    color: #00ff41;
+    background: #0a0a0a;
+    border: 1px dashed #00ff41;
+    padding: 6px 10px;
+    letter-spacing: 1px;
+    word-break: break-all;
+    user-select: all;
+    cursor: pointer;
+    display: inline-block;
+}
+.activation-code:hover { background: rgba(0,255,65,0.1); }
+
+.login-mode-switch { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px dashed #00ff41; padding-bottom: 10px; }
+.login-mode-btn { flex: 1; background: transparent; color: #00ff41; border: 1px solid #00ff41; padding: 8px; font-family: inherit; font-size: 12px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; }
+.login-mode-btn:hover { background: rgba(0,255,65,0.15); }
+.login-mode-btn.active { background: #00ff41; color: #0a0a0a; font-weight: bold; }
+
+/* Firebase панель */
+.fb-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #00ccff;
+    background: rgba(0,204,255,0.05);
+    margin-bottom: 15px;
+}
+.fb-status .fb-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #666;
+}
+.fb-status.online .fb-dot { background: #00ccff; box-shadow: 0 0 8px #00ccff; }
+.fb-status.syncing .fb-dot { background: #ffb000; box-shadow: 0 0 8px #ffb000; animation: pulse 0.8s infinite; }
+.fb-status.offline .fb-dot { background: #ff0033; }
+.fb-status .fb-text { color: #00ccff; font-size: 12px; letter-spacing: 1px; }
+
+.fb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px; }
+.fb-grid label { margin-bottom: 4px; }
+.fb-grid input { margin-bottom: 0; }
+
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 5000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.toast {
+    background: #0a0a0a;
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    padding: 10px 15px;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 1px;
+    box-shadow: 0 0 15px rgba(0,255,65,0.3);
+    animation: slideIn 0.3s ease;
+    pointer-events: auto;
+    max-width: 300px;
+}
+.toast.cloud { border-color: #00ccff; color: #00ccff; box-shadow: 0 0 15px rgba(0,204,255,0.3); }
+.toast.warn { border-color: #ffb000; color: #ffb000; box-shadow: 0 0 15px rgba(255,176,0,0.3); }
+.toast.error { border-color: #ff0033; color: #ff0033; box-shadow: 0 0 15px rgba(255,0,51,0.3); }
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@media (max-width: 700px) {
+    header { flex-direction: column; align-items: flex-start; }
+    .logo { font-size: 22px; }
+    nav { overflow-x: auto; flex-wrap: nowrap; }
+    .tab-btn { white-space: nowrap; flex-shrink: 0; }
+    main { padding: 15px 10px; }
+    table { font-size: 11px; }
+    th, td { padding: 5px; }
+    .ascii-box { padding: 12px; font-size: 12px; }
+    .photo-thumb { width: 40px; height: 40px; }
+    .calc-item { flex-wrap: wrap; }
+    .artifact-card .artifact-stats { grid-template-columns: 1fr; }
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #0a0a0a; }
+::-webkit-scrollbar-thumb { background: #00ff41; }
+::-webkit-scrollbar-thumb:hover { background: #ffb000; }
+
+.hidden { display: none !important; }
+.text-warn { color: #ffb000; }
+.text-danger { color: #ff0033; }
+.text-green { color: #00ff41; }
+.text-cloud { color: #00ccff; }
+.mt-10 { margin-top: 10px; }
+.mb-10 { margin-bottom: 10px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+</style>
+</head>
+<body>
+
+<header>
+    <div class="logo" onclick="switchTab('home')">[ ISG ]</div>
+    <div class="status-bar">
+        <div class="status-item online">● СИСТЕМА: ONLINE</div>
+        <div class="status-item warn">УЗЕЛ: <span id="nodeId">ISG-7734</span></div>
+        <div class="status-item" id="sessionStatus">ГОСТЬ</div>
+        <div class="status-item" id="connectionStatus">📡 LOCAL</div>
+    </div>
+</header>
+
+<nav id="mainNav"></nav>
+
+<main id="content"></main>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="modal" id="loginModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('loginModal')">×</button>
+        <h2>&gt; АВТОРИЗАЦИЯ_</h2>
+        <div class="login-mode-switch">
+            <button class="login-mode-btn active" onclick="switchLoginMode('password')" id="modePasswordBtn">🔑 ПО ПАРОЛЮ</button>
+            <button class="login-mode-btn" onclick="switchLoginMode('code')" id="modeCodeBtn">📟 ПО КОДУ</button>
+        </div>
+
+        <div id="loginByPassword">
+            <p class="text-warn">// Введите позывной и пароль</p>
+            <form onsubmit="handleLogin(event)">
+                <label>ПОЗЫВНОЙ:</label>
+                <input type="text" id="loginCallsign" required maxlength="20" autocomplete="off">
+                <label>ПАРОЛЬ:</label>
+                <input type="password" id="loginPass" required autocomplete="off">
+                <button type="submit" class="btn">&gt; ВОЙТИ В СИСТЕМУ</button>
+            </form>
+        </div>
+
+        <div id="loginByCode" style="display:none;">
+            <p class="text-warn">// Введите код активации от Высшего Совета</p>
+            <form onsubmit="handleCodeLogin(event)">
+                <label>КОД АКТИВАЦИИ:</label>
+                <input type="text" id="activationCode" required autocomplete="off" placeholder="ISG-XXXX-XXXX-XXXX" style="font-family: monospace; letter-spacing: 2px; text-transform: uppercase;">
+                <button type="submit" class="btn">&gt; АКТИВИРОВАТЬ ДОСТУП</button>
+            </form>
+        </div>
+
+        <p class="mt-10" style="font-size:11px;color:#ff0033;">! Несанкционированный доступ фиксируется и преследуется.</p>
+    </div>
+</div>
+
+<div class="modal" id="adminModal">
+    <div class="modal-content warn">
+        <button class="modal-close" onclick="closeModal('adminModal')">×</button>
+        <h2 style="color:#ffb000;">&gt; АДМИН-ПАНЕЛЬ СОВЕТА_</h2>
+
+        <h3 style="color:#00ccff;">☁ FIREBASE СИНХРОНИЗАЦИЯ</h3>
+        <div id="firebasePanel"></div>
+        <hr style="border-color:#ffb000;margin:20px 0;">
+
+        <h3 style="color:#ffb000;">[ УПРАВЛЕНИЕ БОЙЦАМИ ]</h3>
+        <div id="adminFightersList"></div>
+        <form onsubmit="registerFighter(event)" class="mt-10">
+            <div class="row">
+                <div style="flex:1;min-width:150px;"><label>ПОЗЫВНОЙ:</label><input type="text" id="fighterCallsign" required autocomplete="off"></div>
+                <div style="flex:1;min-width:150px;"><label>ПАРОЛЬ:</label><input type="text" id="fighterPass" required autocomplete="off"></div>
+            </div>
+            <div class="row">
+                <div style="flex:1;min-width:120px;"><label>РАНГ:</label>
+                    <select id="fighterRank"><option value="2" selected>БОЕЦ (2)</option></select>
+                </div>
+                <div style="flex:1;min-width:120px;"><label>СТАТУС:</label><select id="fighterStatus"><option>АКТИВЕН</option><option>НА ЗАДАНИИ</option><option>СКРЫТ</option><option>АРХИВ</option></select></div>
+            </div>
+            <label>ПОМЕТКА:</label><textarea id="fighterNote" rows="2"></textarea>
+            <button type="submit" class="btn small">+ ЗАРЕГИСТРИРОВАТЬ БОЙЦА</button>
+        </form>
+        <hr style="border-color:#ffb000;margin:20px 0;">
+
+        <h3 style="color:#ffb000;">[ УПРАВЛЕНИЕ ВКЛАДКАМИ ]</h3>
+        <div id="adminTabsList"></div>
+        <form onsubmit="addTab(event)" class="mt-10">
+            <div class="row">
+                <div style="flex:1;min-width:150px;"><label>ID (латиница):</label><input type="text" id="newTabId" required pattern="[a-zA-Z0-9_]+" autocomplete="off"></div>
+                <div style="flex:1;min-width:150px;"><label>НАЗВАНИЕ:</label><input type="text" id="newTabLabel" required autocomplete="off"></div>
+                <div style="flex:1;min-width:100px;"><label>МИН. РОЛЬ:</label><select id="newTabRole"><option value="guest">ГОСТЬ</option><option value="boets">БОЕЦ</option><option value="sovet">СОВЕТ</option></select></div>
+            </div>
+            <button type="submit" class="btn small">+ ДОБАВИТЬ ВКЛАДКУ</button>
+        </form>
+        <hr style="border-color:#ffb000;margin:20px 0;">
+
+        <h3 style="color:#ffb000;">[ УПРАВЛЕНИЕ ОТЧЁТАМИ ]</h3>
+        <div id="adminReportsList"></div>
+        <hr style="border-color:#ffb000;margin:20px 0;">
+
+        <div class="row">
+            <button class="btn danger small" onclick="if(confirm('Сбросить ВСЕ данные к демо-состоянию?')){resetAll();}">! СБРОС К ДЕМО-ДАННЫМ</button>
+        </div>
+    </div>
+</div>
+
+<div class="photo-modal" id="photoModal" onclick="closePhotoModal(event)">
+    <button class="photo-close" onclick="closePhotoModalDirect()">×</button>
+    <img id="photoModalImg" src="" alt="">
+    <div class="photo-info" id="photoModalInfo"></div>
+</div>
+
+<footer style="text-align:center;padding:20px;border-top:1px dashed #00ff41;color:#00ff41;font-size:11px;opacity:0.7;background:rgba(10,10,10,0.9);">
+    [ ISG ] // INTERNATIONAL SCIENTIFIC GROUP //
+    <br>CONNECTION <span id="connectionLabel" class="text-warn">LOCAL</span> · ENCRYPTED · <span class="blink">█</span>
+</footer>
+
+<script>
+/* ============================================================
+   ISG — ЛОГИКА ИНТЕРФЕЙСА + FIREBASE СИНХРОНИЗАЦИЯ
+   ============================================================ */
+
+const SOVET_PASS = "admin";
+const SOVET_CALLSIGN = "СОВЕТ";
+const ROLE_LEVEL = { guest: 0, boets: 1, sovet: 2 };
+const STORAGE = {
+    tabs: "isg_tabs", fighters: "isg_fighters", stalkers: "isg_stalkers",
+    trusted: "isg_trusted", artifacts: "isg_artifacts", buy: "isg_buy",
+    sell: "isg_sell", reports: "isg_reports", session: "isg_session",
+    fbConfig: "isg_fb_config"
+};
+
+const DEFAULT_FIGHTERS = [
+    { callsign: "ВОРОН-7", password: "voron7", rank: "2", status: "АКТИВЕН", note: "Специалист по артефактам." },
+    { callsign: "ЛИСА", password: "lisa123", rank: "2", status: "НА ЗАДАНИИ", note: "Инфильтрация в объект «Чёрный обелиск»." },
+    { callsign: "ШТОРМ", password: "storm445", rank: "2", status: "АКТИВЕН", note: "Полевые операции." }
+];
+const DEFAULT_STALKERS = [
+    { id: 1, callsign: "БРОДЯГА", rank: "1", status: "В БАРЕРЕ", birthDate: "1995-03-15", note: "Новобранец.", photo: "" },
+    { id: 2, callsign: "МЕХАНИК", rank: "2", status: "АКТИВЕН", birthDate: "1988-07-22", note: "Специалист по технике.", photo: "" },
+    { id: 3, callsign: "КРОТ", rank: "3", status: "ПРОПАЛ", birthDate: "1982-11-08", note: "Поиск ведётся.", photo: "" }
+];
+const DEFAULT_TRUSTED = [
+    { id: 1, callsign: "ПРИЗРАК", status: "АКТИВЕН", birthDate: "1975-05-30", note: "Высший уровень доверия.", photo: "" },
+    { id: 2, callsign: "ДОК", status: "АКТИВЕН", birthDate: "1980-09-12", note: "Полевой хирург.", photo: "" }
+];
+const DEFAULT_BUY = [
+    { id: 1, item: "Аномальный кристалл (3 ед.)", price: "4500 у.е." },
+    { id: 2, item: "Документация объекта «Купол»", price: "8000 у.е." },
+    { id: 3, item: "Контейнер с образцами почвы", price: "1200 у.е." },
+    { id: 4, item: "Контейнер «Глаз»", price: "15000 у.е." }
+];
+const DEFAULT_SELL = [
+    { id: 1, item: "Карта Сектора-4 (полная)", price: "6000 у.е.", group: "Информация" },
+    { id: 2, item: "Консультация аномалиста", price: "2500 у.е.", group: "Услуги" },
+    { id: 3, item: "Защищённый коммуникатор", price: "3800 у.е.", group: "Снаряжение" },
+    { id: 4, item: "Аптечка научная", price: "900 у.е.", group: "Медикаменты" },
+    { id: 5, item: "Артефакт «Пустышка»", price: "22000 у.е.", group: "Артефакты" },
+    { id: 6, item: "Детектор аномалий", price: "12000 у.е.", group: "Снаряжение" },
+    { id: 7, item: "Анализ артефакта", price: "5000 у.е.", group: "Услуги" }
+];
+const DEFAULT_ARTIFACTS = [
+    { id: 1, name: "Пустышка", stamina: 0, weight: 0.5, chemProtection: 0, gravProtection: 0, thermProtection: 0, elecProtection: 0, blood: 0, health: 0, radiation: -5, meleeProtection: 0, biteProtection: 0, hunger: 0, thirst: 0, shock: 0 },
+    { id: 2, name: "Колобок", stamina: 10, weight: 1.2, chemProtection: 0, gravProtection: 0, thermProtection: 0, elecProtection: 0, blood: 0, health: 15, radiation: 0, meleeProtection: 0, biteProtection: 0, hunger: 0, thirst: 0, shock: 0 }
+];
+const DEFAULT_REPORTS = [
+    { id: 1, title: "Выход в Зону-0", author: "ЛИСА", role: "boets", access: "boets", date: "2026-11-22", text: "Обследован периметр объекта «Чёрный обелиск»." },
+    { id: 2, title: "Отчёт по кристаллам", author: "ВОРОН-7", role: "boets", access: "boets", date: "2026-11-20", text: "Доставленные образцы проходят проверку." },
+    { id: 3, title: "СОВЕРШЕННО СЕКРЕТНО: Операция «Тишина»", author: "ВЫСШИЙ СОВЕТ", role: "sovet", access: "sovet", date: "2026-11-18", text: "Только для членов Совета." }
+];
+const DEFAULT_TABS = [
+    { id: "home", label: "ГЛАВНАЯ", minRole: "guest" },
+    { id: "agents", label: "АГЕНТЫ", minRole: "boets" },
+    { id: "stalkers", label: "СТАЛКЕРЫ", minRole: "boets" },
+    { id: "trusted", label: "ДОВЕРЕННЫЕ", minRole: "boets" },
+    { id: "artifacts", label: "АРТЕФАКТЫ", minRole: "boets" },
+    { id: "buy", label: "СКУПКА", minRole: "boets" },
+    { id: "sell", label: "ПРОДАЖА", minRole: "boets" },
+    { id: "reports", label: "ОТЧЁТЫ", minRole: "boets" }
+];
+
+let collapsedGroups = {};
+
+function load(key, fallback) { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch(e) { return fallback; } }
+function save(key, data) { localStorage.setItem(key, JSON.stringify(data)); if (!isApplyingRemote) syncStateToCloud(); }
+
+let tabs = load(STORAGE.tabs, DEFAULT_TABS);
+let fighters = load(STORAGE.fighters, DEFAULT_FIGHTERS);
+let stalkers = load(STORAGE.stalkers, DEFAULT_STALKERS);
+let trusted = load(STORAGE.trusted, DEFAULT_TRUSTED);
+let artifacts = load(STORAGE.artifacts, DEFAULT_ARTIFACTS);
+let buy = load(STORAGE.buy, DEFAULT_BUY);
+let sell = load(STORAGE.sell, DEFAULT_SELL);
+let reports = load(STORAGE.reports, DEFAULT_REPORTS);
+let session = load(STORAGE.session, null);
+let activeTab = "home";
+
+/* ============================================================
+   FIREBASE МОДУЛЬ
+   ============================================================ */
+let fbApp = null;
+let fbDb = null;
+let fbStateRef = null;
+let fbListener = null;
+let isApplyingRemote = false; // защита от бесконечного цикла
+let autoSyncEnabled = true;
+let fbStatus = 'offline'; // offline | online | syncing
+
+function getFbConfig() { return load(STORAGE.fbConfig, null); }
+
+function toast(msg, type = 'green') {
+    const container = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = 'toast ' + (type === 'cloud' ? 'cloud' : type === 'warn' ? 'warn' : type === 'error' ? 'error' : '');
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(100%)';
+        el.style.transition = 'all 0.3s';
+        setTimeout(() => el.remove(), 300);
+    }, 2800);
+}
+
+function updateConnectionIndicator() {
+    const indicator = document.getElementById('connectionStatus');
+    const label = document.getElementById('connectionLabel');
+    if (fbStatus === 'online') {
+        indicator.textContent = '☁ CLOUD';
+        indicator.className = 'status-item cloud';
+        label.textContent = 'CLOUD SYNC';
+        label.className = 'text-cloud';
+    } else if (fbStatus === 'syncing') {
+        indicator.textContent = '↻ SYNCING';
+        indicator.className = 'status-item syncing';
+        label.textContent = 'SYNCING';
+        label.className = 'text-warn';
+    } else {
+        indicator.textContent = '📡 LOCAL';
+        indicator.className = 'status-item warn';
+        label.textContent = 'LOCAL';
+        label.className = 'text-warn';
+    }
+}
+
+function initFirebase(config) {
+    return new Promise((resolve, reject) => {
+        try {
+            if (!window.firebase) return reject(new Error("Firebase SDK не загружен"));
+            if (!config.apiKey || !config.databaseURL) return reject(new Error("Конфиг incomplete"));
+
+            // Если уже инициализирован — пересоздаём
+            if (fbApp) {
+                try { firebase.app('[ISG]').delete(); } catch(e){}
+                fbApp = null;
+            }
+
+            fbApp = firebase.initializeApp(config, '[ISG]');
+            fbDb = fbApp.database();
+            fbStateRef = fbDb.ref('isg_state');
+            resolve();
+        } catch(err) {
+            reject(err);
+        }
+    });
+}
+
+function disconnectFirebase() {
+    if (fbListener) { fbStateRef.off('value', fbListener); fbListener = null; }
+    if (fbApp) {
+        try { firebase.app('[ISG]').delete(); } catch(e){}
+        fbApp = null;
+    }
+    fbDb = null;
+    fbStateRef = null;
+    fbStatus = 'offline';
+    updateConnectionIndicator();
+    toast('Firebase отключён', 'warn');
+}
+
+function buildCloudState() {
+    return {
+        _meta: {
+            updatedAt: Date.now(),
+            editor: session ? session.callsign : 'GUEST',
+            version: '1.0'
+        },
+        fighters, stalkers, trusted, artifacts, buy, sell, reports, tabs
+    };
+}
+
+function applyCloudState(data) {
+    if (!data || typeof data !== 'object') return;
+    isApplyingRemote = true;
+    try {
+        ['fighters','stalkers','trusted','artifacts','buy','sell','reports','tabs'].forEach(key => {
+            if (Array.isArray(data[key])) {
+                switch(key) {
+                    case 'fighters': fighters = data[key]; break;
+                    case 'stalkers': stalkers = data[key]; break;
+                    case 'trusted': trusted = data[key]; break;
+                    case 'artifacts': artifacts = data[key]; break;
+                    case 'buy': buy = data[key]; break;
+                    case 'sell': sell = data[key]; break;
+                    case 'reports': reports = data[key]; break;
+                    case 'tabs': tabs = data[key]; break;
+                }
+                save(STORAGE[key], data[key]);
+            }
+        });
+        renderAll();
+    } finally {
+        isApplyingRemote = false;
+    }
+}
+
+function startListening() {
+    if (!fbStateRef) return;
+    if (fbListener) fbStateRef.off('value', fbListener);
+    fbListener = (snapshot) => {
+        const data = snapshot.val();
+        if (data) applyCloudState(data);
+    };
+    fbStateRef.on('value', fbListener);
+}
+
+function syncStateToCloud() {
+    if (!fbStateRef || !autoSyncEnabled || isApplyingRemote) return;
+    setCloudState(buildCloudState());
+}
+
+function setCloudState(state) {
+    if (!fbStateRef) return;
+    fbStatus = 'syncing';
+    updateConnectionIndicator();
+    fbStateRef.set(state).then(() => {
+        fbStatus = 'online';
+        updateConnectionIndicator();
+    }).catch(err => {
+        fbStatus = 'online'; // всё равно подключены, но ошибка записи
+        updateConnectionIndicator();
+        toast('Ошибка записи: ' + err.message, 'error');
+    });
+}
+
+// === UI FIREBASE ПАНЕЛИ ===
+function renderFirebasePanel() {
+    const config = getFbConfig();
+    const panel = document.getElementById('firebasePanel');
+    if (!panel) return;
+
+    let statusClass = 'offline';
+    let statusText = 'ОФФЛАЙН — данные только в localStorage';
+    if (fbStatus === 'online') { statusClass = 'online'; statusText = 'ONLINE — синхронизация с облаком активна'; }
+    else if (fbStatus === 'syncing') { statusClass = 'syncing'; statusText = 'SYNCING — идёт запись в облако...'; }
+
+    let html = `
+<div class="fb-status ${statusClass}">
+    <div class="fb-dot"></div>
+    <div class="fb-text">${statusText}</div>
+</div>
+
+<div class="fb-grid">
+    <div>
+        <label>API KEY:</label>
+        <input type="text" id="fbApiKey" value="${config?.apiKey || ''}" autocomplete="off">
+    </div>
+    <div>
+        <label>AUTH DOMAIN:</label>
+        <input type="text" id="fbAuthDomain" value="${config?.authDomain || ''}" autocomplete="off" placeholder="проект.firebaseapp.com">
+    </div>
+    <div>
+        <label>DATABASE URL:</label>
+        <input type="text" id="fbDatabaseUrl" value="${config?.databaseURL || ''}" autocomplete="off" placeholder="https://xxx.firebaseio.com">
+    </div>
+    <div>
+        <label>PROJECT ID:</label>
+        <input type="text" id="fbProjectId" value="${config?.projectId || ''}" autocomplete="off">
+    </div>
+    <div>
+        <label>STORAGE BUCKET:</label>
+        <input type="text" id="fbStorageBucket" value="${config?.storageBucket || ''}" autocomplete="off">
+    </div>
+    <div>
+        <label>MESSAGING SENDER ID:</label>
+        <input type="text" id="fbSenderId" value="${config?.messagingSenderId || ''}" autocomplete="off">
+    </div>
+    <div>
+        <label>APP ID:</label>
+        <input type="text" id="fbAppId" value="${config?.appId || ''}" autocomplete="off">
+    </div>
+</div>
+
+<div class="row">
+    <button class="btn cloud small" onclick="connectFirebase()">🔗 ПОДКЛЮЧИТЬ</button>
+    <button class="btn warn small" onclick="disconnectFirebase()">✖ ОТКЛЮЧИТЬ</button>
+    <button class="btn small" onclick="pushToCloud()">📤 PUSH → CLOUD</button>
+    <button class="btn small" onclick="pullFromCloud()">📥 PULL ← CLOUD</button>
+    <button class="btn small" onclick="toggleAutoSync(this)" id="autoSyncBtn">${autoSyncEnabled ? '⏸ AUTO-SYNC: ВКЛ' : '▶ AUTO-SYNC: ВЫКЛ'}</button>
+</div>
+
+<p class="text-warn" style="font-size:11px;margin-top:10px;">
+⚠ Как создать Firebase проект:<br>
+1. console.firebase.google.com → Новый проект<br>
+2. Realtime Database → Создать базу (режим test)<br>
+3. Project Settings → General → "Your apps" → Web App → скопировать конфиг<br>
+4. Вставьте значения сюда и нажмите "ПОДКЛЮЧИТЬ"<br>
+5. Настройте правила (Rules) — см. документацию ниже<br>
+<br>
+! Данные хранятся ОТКРЫТО в облаке. Не вводите реальные секреты!
+</p>
+
+<div class="row mt-10">
+    <button class="btn small" onclick="showFirebaseRules()">📋 ПОКАЗАТЬ ПРАВИЛА (RULES)</button>
+</div>
+`;
+
+    panel.innerHTML = html;
+}
+
+async function connectFirebase() {
+    const config = {
+        apiKey: document.getElementById('fbApiKey').value.trim(),
+        authDomain: document.getElementById('fbAuthDomain').value.trim(),
+        databaseURL: document.getElementById('fbDatabaseUrl').value.trim(),
+        projectId: document.getElementById('fbProjectId').value.trim(),
+        storageBucket: document.getElementById('fbStorageBucket').value.trim(),
+        messagingSenderId: document.getElementById('fbSenderId').value.trim(),
+        appId: document.getElementById('fbAppId').value.trim()
+    };
+    if (!config.apiKey || !config.databaseURL) {
+        toast('Нужны как минимум API KEY и DATABASE URL', 'error');
+        return;
+    }
+    toast('Подключение к Firebase...', 'cloud');
+    try {
+        await initFirebase(config);
+        save(STORAGE.fbConfig, config);
+        fbStatus = 'online';
+        startListening();
+        updateConnectionIndicator();
+        toast('✓ Firebase подключён', 'cloud');
+        renderFirebasePanel();
+    } catch(err) {
+        fbStatus = 'offline';
+        updateConnectionIndicator();
+        toast('Ошибка подключения: ' + err.message, 'error');
+    }
+}
+
+function pushToCloud() {
+    if (!fbStateRef) { toast('Firebase не подключён', 'error'); return; }
+    const state = buildCloudState();
+    setCloudState(state);
+    toast('Данные отправлены в облако', 'cloud');
+}
+
+async function pullFromCloud() {
+    if (!fbStateRef) { toast('Firebase не подключён', 'error'); return; }
+    fbStatus = 'syncing';
+    updateConnectionIndicator();
+    try {
+        const snap = await fbStateRef.once('value');
+        const data = snap.val();
+        if (data) {
+            applyCloudState(data);
+            toast('Данные загружены из облака', 'cloud');
+        } else {
+            toast('Облако пустое. Отправьте данные кнопкой PUSH', 'warn');
+        }
+    } catch(err) {
+        toast('Ошибка загрузки: ' + err.message, 'error');
+    }
+    fbStatus = 'online';
+    updateConnectionIndicator();
+}
+
+function toggleAutoSync(btn) {
+    autoSyncEnabled = !autoSyncEnabled;
+    if (autoSyncEnabled) syncStateToCloud();
+    renderFirebasePanel();
+    toast(autoSyncEnabled ? 'Авто-синхронизация ВКЛ' : 'Авто-синхронизация ВЫКЛ', 'warn');
+}
+
+function showFirebaseRules() {
+    const rules = `{
+  "rules": {
+    "isg_state": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
+
+⚠ Для продакшена используйте Firebase Auth + правила доступа.`;
+    const ta = document.createElement('textarea');
+    ta.value = rules;
+    ta.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);width:80%;height:60vh;background:#0a0a0a;color:#00ff41;border:2px solid #00ccff;padding:20px;z-index:10000;font-family:monospace;box-shadow:0 0 40px rgba(0,204,255,0.5);';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    const close = () => ta.remove();
+    ta.addEventListener('keydown', e => { if(e.key==='Escape') close(); });
+    const btn = document.createElement('button');
+    btn.textContent = '✖ ЗАКРЫТЬ';
+    btn.style.cssText = 'position:fixed;top:20px;left:calc(50% + 40% - 80px);z-index:10001;';
+    btn.className = 'btn danger';
+    btn.onclick = close;
+    document.body.appendChild(btn);
+}
+
+function tryAutoConnect() {
+    const config = getFbConfig();
+    if (!config || !config.apiKey) return;
+    initFirebase(config).then(() => {
+        fbStatus = 'online';
+        startListening();
+        updateConnectionIndicator();
+        if (fbStateRef) {
+            fbStateRef.once('value').then(snap => {
+                const data = snap.val();
+                if (data && data._meta && data._meta.updatedAt > (Date.now() - 5000)) {
+                    applyCloudState(data);
+                } else if (data) {
+                    applyCloudState(data);
+                } else {
+                    // облако пусто — первым делом пушим локальные данные
+                    pushToCloud();
+                }
+            });
+        }
+        console.log('%c[ISG] Firebase auto-reconnected.', 'color:#00ccff;font-family:monospace;');
+    }).catch(err => {
+        console.warn('[ISG] Firebase init failed:', err.message);
+    });
+}
+
+/* ============================================================
+   КОДЫ АКТИВАЦИИ (резервный доступ)
+   ============================================================ */
+function generateActivationCode(fighter) {
+    const data = { callsign: fighter.callsign, password: fighter.password, rank: fighter.rank, status: fighter.status, note: fighter.note, timestamp: Date.now() };
+    const base64 = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+    const chunks = base64.match(/.{1,6}/g) || [];
+    return "ISG-" + chunks.slice(0, 3).join("-");
+}
+
+function decodeActivationCode(code) {
+    try {
+        let base64 = code.replace(/^ISG-/i, "").trim().replace(/-/g, "");
+        while (base64.length % 4 !== 0) base64 += "=";
+        const data = JSON.parse(decodeURIComponent(escape(atob(base64))));
+        const age = Date.now() - data.timestamp;
+        if (age / (1000 * 60 * 60 * 24) > 30) return { error: "Код активации устарел (старше 30 дней)." };
+        return data;
+    } catch(e) { return { error: "Недействительный код активации." }; }
+}
+
+/* ============================================================
+   БАЗОВАЯ ЛОГИКА
+   ============================================================ */
+function currentRole() { return session ? session.role : "guest"; }
+function roleLevel(r) { return ROLE_LEVEL[r] ?? 0; }
+function isGuest() { return !session; }
+function isSovet() { return currentRole() === "sovet"; }
+function canEditEntries() { return !isGuest(); }
+function canEditReport(report) { if (isSovet()) return true; if (!session) return false; return report.author === session.callsign; }
+function canDeleteReport(r) { return canEditReport(r); }
+function canManageTabs() { return isSovet(); }
+function canSeeTab(tab) { return roleLevel(currentRole()) >= roleLevel(tab.minRole); }
+function canSeeReport(report) { return roleLevel(currentRole()) >= roleLevel(report.access); }
+
+function openPhoto(src, callsign) {
+    if (!src) return;
+    document.getElementById("photoModalImg").src = src;
+    document.getElementById("photoModalInfo").textContent = callsign ? `[ ${callsign} ]` : '';
+    document.getElementById("photoModal").classList.add("open");
+}
+function closePhotoModal(e) { if (e.target === document.getElementById("photoModal")) document.getElementById("photoModal").classList.remove("open"); }
+function closePhotoModalDirect() { document.getElementById("photoModal").classList.remove("open"); }
+
+function switchLoginMode(mode) {
+    const pwdDiv = document.getElementById("loginByPassword");
+    const codeDiv = document.getElementById("loginByCode");
+    const pwdBtn = document.getElementById("modePasswordBtn");
+    const codeBtn = document.getElementById("modeCodeBtn");
+    if (mode === "password") { pwdDiv.style.display="block"; codeDiv.style.display="none"; pwdBtn.classList.add("active"); codeBtn.classList.remove("active"); }
+    else { pwdDiv.style.display="none"; codeDiv.style.display="block"; pwdBtn.classList.remove("active"); codeBtn.classList.add("active"); }
+}
+
+function handleLogin(e) {
+    e.preventDefault();
+    const callsign = document.getElementById("loginCallsign").value.trim().toUpperCase();
+    const pass = document.getElementById("loginPass").value;
+    if (callsign === SOVET_CALLSIGN && pass === SOVET_PASS) {
+        session = { callsign: SOVET_CALLSIGN, role: "sovet" }; save(STORAGE.session, session);
+        closeModal("loginModal"); renderAll(); return;
+    }
+    const fighter = fighters.find(f => f.callsign.toUpperCase() === callsign);
+    if (!fighter) { alert("[ОШИБКА] Позывной не найден.\n\nЕсли подключён Firebase — обновите страницу.\nИли используйте вход по коду."); return; }
+    if (fighter.password !== pass) { alert("[ОШИБКА] Неверный пароль."); return; }
+    session = { callsign: fighter.callsign, role: "boets" }; save(STORAGE.session, session);
+    closeModal("loginModal"); renderAll();
+}
+
+function handleCodeLogin(e) {
+    e.preventDefault();
+    const code = document.getElementById("activationCode").value.trim().toUpperCase();
+    const data = decodeActivationCode(code);
+    if (data.error) { alert("[ОШИБКА] " + data.error); return; }
+    const existing = fighters.find(f => f.callsign.toUpperCase() === data.callsign.toUpperCase());
+    if (existing) { if (existing.password !== data.password) { alert("[ОШИБКА] Пароль не совпадает."); return; } }
+    else { fighters.push({ callsign: data.callsign, password: data.password, rank: data.rank || "2", status: data.status || "АКТИВЕН", note: data.note || "" }); save(STORAGE.fighters, fighters); }
+    session = { callsign: data.callsign, role: "boets" }; save(STORAGE.session, session);
+    closeModal("loginModal"); renderAll();
+    toast("Активация успешна, " + data.callsign, "cloud");
+}
+
+function logout() { session = null; localStorage.removeItem(STORAGE.session); activeTab = "home"; renderAll(); }
+function openLogin() { document.getElementById("loginCallsign").value=""; document.getElementById("loginPass").value=""; document.getElementById("activationCode").value=""; switchLoginMode('password'); openModal("loginModal"); }
+function openModal(id) { document.getElementById(id).classList.add("open"); }
+function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+function switchTab(id) {
+    const tab = tabs.find(t => t.id === id);
+    if (!tab) return;
+    if (!canSeeTab(tab)) { alert("[ОТКАЗ В ДОСТУПЕ]"); return; }
+    activeTab = id; renderAll(); window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderMenu() {
+    const nav = document.getElementById("mainNav");
+    let html = "";
+    tabs.forEach(tab => {
+        if (!canSeeTab(tab)) return;
+        const active = tab.id === activeTab ? "active" : "";
+        const admin = tab.minRole === "sovet" ? "admin" : "";
+        html += `<button class="tab-btn ${active} ${admin}" onclick="switchTab('${tab.id}')">[${tab.label}]</button>`;
+    });
+    html += `<div class="nav-spacer"></div>`;
+    if (isSovet()) html += `<button class="tab-btn admin" onclick="openAdmin()">⚙ СОВЕТ</button>`;
+    if (isGuest()) html += `<button class="auth-btn" onclick="openLogin()">→ АВТОРИЗАЦИЯ</button>`;
+    else { html += `<span class="status-item warn" style="margin-right:5px;">${session.callsign} [${session.role.toUpperCase()}]</span>`; html += `<button class="auth-btn logout" onclick="logout()">× ВЫХОД</button>`; }
+    nav.innerHTML = html;
+    const ss = document.getElementById("sessionStatus");
+    if (isGuest()) { ss.textContent = "ГОСТЬ"; ss.className = "status-item danger"; }
+    else { ss.textContent = `${session.callsign} · ${session.role.toUpperCase()}`; ss.className = "status-item " + (isSovet() ? "warn" : "online"); }
+}
+
+function renderContent() {
+    const tab = tabs.find(t => t.id === activeTab);
+    const content = document.getElementById("content");
+    if (!tab) { content.innerHTML = `<div class="ascii-box danger">[ОШИБКА] Вкладка не найдена.</div>`; return; }
+    if (!canSeeTab(tab)) { content.innerHTML = `<div class="ascii-box danger">[ОТКАЗ В ДОСТУПЕ]\n"${tab.label}"\nТребуется: ${tab.minRole.toUpperCase()}.</div>`; return; }
+    content.innerHTML = renderTabContent(tab.id);
+    if (tab.id === "sell") restoreGroupStates();
+}
+
+function renderTabContent(id) {
+    switch(id) {
+        case "home": return renderHome();
+        case "agents": return renderAgents();
+        case "stalkers": return renderStalkers();
+        case "trusted": return renderTrusted();
+        case "artifacts": return renderArtifacts();
+        case "buy": return renderBuy();
+        case "sell": return renderSell();
+        case "reports": return renderReports();
+        default: return `<div class="ascii-box">[КАСТОМНАЯ ВКЛАДКА: ${id}]</div>`;
+    }
+}
+
+function renderHome() {
+    let html = `<div class="ascii-box" data-title="[ ДОБРО ПОЖАЛОВАТЬ ]">
+> ISG — INTERNATIONAL SCIENTIFIC GROUP
+> ВЕРСИЯ СИСТЕМЫ: 4.7.2
+> РЕЖИМ ДАННЫХ: ${fbStatus === 'online' ? '<span class="text-cloud">☁ CLOUD (Firebase)</span>' : '<span class="text-warn">📡 LOCAL (localStorage)</span>'}
+
+Добро пожаловать в закрытую сеть ISG.
+</div>`;
+    if (isGuest()) {
+        html += `<div class="ascii-box warn" data-title="[ ВНИМАНИЕ ]">
+! ВЫ В РЕЖИМЕ ГОСТЯ.
+Для доступа нажмите [→ АВТОРИЗАЦИЯ].
+
+СПОСОБЫ ВХОДА:
+  🔑 ПО ПАРОЛЮ — если аккаунт уже в базе
+  📟 ПО КОДУ — если получен код активации
+
+${fbStatus === 'online' ? '✓ База загружена из Firebase.' : '⚠ Данные только в localStorage. Чтобы синхронизировать с остальными — попросите Совет подключить Firebase.'}
+</div>`;
+    } else {
+        html += `<div class="ascii-box" data-title="[ СТАТУС ОПЕРАТОРА ]">
+ПОЗЫВНОЙ: ${session.callsign}
+УРОВЕНЬ:  ${session.role.toUpperCase()}
+СТАТУС:   <span class="text-green">АВТОРИЗОВАН</span>
+${isSovet() ? '\n⚙ АДМИН-ПАНЕЛЬ доступна (кнопка в меню).' : ''}
+</div>`;
+    }
+    html += `<div class="ascii-box danger" data-title="[ КОНФИДЕНЦИАЛЬНОСТЬ ]">
+Вся информация — собственность ISG.
+Копирование и передача ЗАПРЕЩЕНЫ.
+Нарушение преследуется по кодексу Группы.
+</div>`;
+    return html;
+}
+
+function renderAgents() {
+    const boetsOnly = fighters.filter(f => f.rank === "2");
+    let html = `<h1>&gt; АГЕНТЫ ISG (БОЙЦЫ)_</h1>
+<p class="text-warn" style="font-size:12px;">// Действующие бойцы группы (ранг 2).</p>
+<div class="row mb-10"><input type="text" id="agentsSearch" placeholder="ПОИСК..." oninput="filterAgents()" style="flex:1;min-width:200px;margin:0;"></div>
+<div id="agentsTable">${renderAgentsTable(boetsOnly)}</div>`;
+    if (isSovet()) html += `<div class="ascii-box warn mt-10" data-title="[ УПРАВЛЕНИЕ ]">Регистрация бойцов — через АДМИН-ПАНЕЛЬ (⚙ СОВЕТ).</div>`;
+    return html;
+}
+function renderAgentsTable(list) {
+    if (!list.length) return `<p class="text-warn">// Нет записей</p>`;
+    let html = `<table><tr><th>ПОЗЫВНОЙ</th><th>РАНГ</th><th>СТАТУС</th><th>ПОМЕТКА</th></tr>`;
+    list.forEach(e => html += `<tr><td>${escapeHtml(e.callsign)}</td><td>БОЕЦ (${escapeHtml(e.rank)})</td><td>${escapeHtml(e.status)}</td><td>${escapeHtml(e.note)}</td></tr>`);
+    return html + `</table>`;
+}
+function filterAgents() {
+    const q = document.getElementById("agentsSearch").value.toLowerCase();
+    const list = fighters.filter(f => f.rank === "2").filter(e =>
+        e.callsign.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.note.toLowerCase().includes(q));
+    document.getElementById("agentsTable").innerHTML = renderAgentsTable(list);
+}
+
+function renderStalkers() {
+    let html = `<h1>&gt; БАЗА ДАННЫХ СТАЛКЕРОВ_</h1>
+<p class="text-warn" style="font-size:12px;">// Вольные сталкеры. Клик по фото — просмотр.</p>
+<div class="row mb-10"><input type="text" id="stalkersSearch" placeholder="ПОИСК..." oninput="filterStalkers()" style="flex:1;min-width:200px;margin:0;"></div>
+<div id="stalkersTable">${renderStalkersTable(stalkers)}</div>`;
+    if (canEditEntries()) html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ СТАЛКЕРА ]</h3><form onsubmit="addStalker(event)">
+        <div class="row">
+            <div style="flex:1;min-width:150px;"><label>ПОЗЫВНОЙ:</label><input type="text" id="stCallsign" required></div>
+            <div style="flex:1;min-width:120px;"><label>РАНГ:</label><select id="stRank"><option>1</option><option>2</option><option>3</option></select></div>
+            <div style="flex:1;min-width:120px;"><label>СТАТУС:</label><select id="stStatus"><option>АКТИВЕН</option><option>НА ЗАДАНИИ</option><option>В БАРЕРЕ</option><option>ПРОПАЛ</option><option>МЁРТВ</option></select></div>
+            <div style="flex:1;min-width:150px;"><label>ДАТА РОЖД.:</label><input type="date" id="stBirthDate"></div>
+        </div>
+        <label>ФОТО URL:</label><input type="text" id="stPhotoUrl" placeholder="https://...">
+        <label>ПОМЕТКА:</label><textarea id="stNote" required></textarea>
+        <button type="submit" class="btn small">+ ДОБАВИТЬ</button></form></div>`;
+    return html;
+}
+function renderStalkersTable(list) {
+    if (!list.length) return `<p class="text-warn">// Нет записей</p>`;
+    const actions = canEditEntries();
+    let html = `<table><tr><th>ФОТО</th><th>ПОЗЫВНОЙ</th><th>РАНГ</th><th>СТАТУС</th><th>ДАТА</th><th>ПОМЕТКА</th>${actions?'<th>ДЕЙСТВИЕ</th>':''}</tr>`;
+    list.forEach(e => {
+        const photo = e.photo ? `<img src="${e.photo}" class="photo-thumb" onclick="openPhoto('${escapeHtml(e.photo)}','${escapeHtml(e.callsign)}')">` : '<span class="text-warn">—</span>';
+        html += `<tr><td>${photo}</td><td>${escapeHtml(e.callsign)}</td><td>${escapeHtml(e.rank)}</td><td>${escapeHtml(e.status)}</td><td>${e.birthDate||'—'}</td><td>${escapeHtml(e.note)}</td>${actions?`<td><button class="btn warn small" onclick="editStalker(${e.id})">✎</button> <button class="btn danger small" onclick="deleteStalker(${e.id})">×</button></td>`:''}</tr>`;
+    });
+    return html + `</table>`;
+}
+function filterStalkers() {
+    const q = document.getElementById("stalkersSearch").value.toLowerCase();
+    document.getElementById("stalkersTable").innerHTML = renderStalkersTable(stalkers.filter(e =>
+        e.callsign.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.note.toLowerCase().includes(q)));
+}
+function addStalker(e) {
+    e.preventDefault();
+    if (!canEditEntries()) return;
+    const newId = stalkers.length ? Math.max(...stalkers.map(x=>x.id))+1 : 1;
+    stalkers.push({ id: newId, callsign: document.getElementById("stCallsign").value.trim(), rank: document.getElementById("stRank").value, status: document.getElementById("stStatus").value, birthDate: document.getElementById("stBirthDate").value, note: document.getElementById("stNote").value.trim(), photo: document.getElementById("stPhotoUrl").value.trim() });
+    save(STORAGE.stalkers, stalkers); renderContent();
+}
+function editStalker(id) {
+    if (!canEditEntries()) return;
+    const s = stalkers.find(x => x.id === id); if (!s) return;
+    const callsign = prompt("Позывной:", s.callsign); if (callsign === null) return;
+    const rank = prompt("Ранг:", s.rank); if (rank === null) return;
+    const status = prompt("Статус:", s.status); if (status === null) return;
+    const birthDate = prompt("Дата рождения:", s.birthDate); if (birthDate === null) return;
+    const photo = prompt("Фото URL:", s.photo); if (photo === null) return;
+    const note = prompt("Пометка:", s.note); if (note === null) return;
+    s.callsign = callsign.trim()||s.callsign; s.rank = rank.trim()||s.rank; s.status = status.trim()||s.status; s.birthDate = birthDate.trim(); s.photo = photo.trim(); s.note = note.trim()||s.note;
+    save(STORAGE.stalkers, stalkers); renderContent();
+}
+function deleteStalker(id) {
+    if (!canEditEntries()) return;
+    if (!confirm("Удалить сталкера?")) return;
+    stalkers = stalkers.filter(e => e.id !== id); save(STORAGE.stalkers, stalkers); renderContent();
+}
+
+function renderTrusted() {
+    let html = `<h1>&gt; ДОВЕРЕННЫЕ СТАЛКЕРЫ_</h1>
+<p class="text-warn" style="font-size:12px;">// Проверенные контакты.</p>
+<div class="row mb-10"><input type="text" id="trustedSearch" placeholder="ПОИСК..." oninput="filterTrusted()" style="flex:1;min-width:200px;margin:0;"></div>
+<div id="trustedTable">${renderTrustedTable(trusted)}</div>`;
+    if (isSovet()) html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ ДОВЕРЕННОГО ]</h3><form onsubmit="addTrusted(event)">
+        <div class="row">
+            <div style="flex:1;min-width:150px;"><label>ПОЗЫВНОЙ:</label><input type="text" id="trCallsign" required></div>
+            <div style="flex:1;min-width:120px;"><label>СТАТУС:</label><select id="trStatus"><option>АКТИВЕН</option><option>НА ЗАДАНИИ</option><option>В БАРЕРЕ</option><option>ПРОПАЛ</option><option>МЁРТВ</option></select></div>
+            <div style="flex:1;min-width:150px;"><label>ДАТА РОЖД.:</label><input type="date" id="trBirthDate"></div>
+        </div>
+        <label>ФОТО URL:</label><input type="text" id="trPhotoUrl" placeholder="https://...">
+        <label>ПОМЕТКА:</label><textarea id="trNote" required></textarea>
+        <button type="submit" class="btn small">+ ДОБАВИТЬ</button></form></div>`;
+    return html;
+}
+function renderTrustedTable(list) {
+    if (!list.length) return `<p class="text-warn">// Нет записей</p>`;
+    const actions = isSovet();
+    let html = `<table><tr><th>ФОТО</th><th>ПОЗЫВНОЙ</th><th>СТАТУС</th><th>ДАТА</th><th>ПОМЕТКА</th>${actions?'<th>ДЕЙСТВИЕ</th>':''}</tr>`;
+    list.forEach(e => {
+        const photo = e.photo ? `<img src="${e.photo}" class="photo-thumb" onclick="openPhoto('${escapeHtml(e.photo)}','${escapeHtml(e.callsign)}')">` : '<span class="text-warn">—</span>';
+        html += `<tr><td>${photo}</td><td>${escapeHtml(e.callsign)}</td><td>${escapeHtml(e.status)}</td><td>${e.birthDate||'—'}</td><td>${escapeHtml(e.note)}</td>${actions?`<td><button class="btn warn small" onclick="editTrusted(${e.id})">✎</button> <button class="btn danger small" onclick="deleteTrusted(${e.id})">×</button></td>`:''}</tr>`;
+    });
+    return html + `</table>`;
+}
+function filterTrusted() {
+    const q = document.getElementById("trustedSearch").value.toLowerCase();
+    document.getElementById("trustedTable").innerHTML = renderTrustedTable(trusted.filter(e =>
+        e.callsign.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.note.toLowerCase().includes(q)));
+}
+function addTrusted(e) {
+    e.preventDefault();
+    if (!isSovet()) { alert("[ОТКАЗ]"); return; }
+    const newId = trusted.length ? Math.max(...trusted.map(x=>x.id))+1 : 1;
+    trusted.push({ id: newId, callsign: document.getElementById("trCallsign").value.trim(), status: document.getElementById("trStatus").value, birthDate: document.getElementById("trBirthDate").value, note: document.getElementById("trNote").value.trim(), photo: document.getElementById("trPhotoUrl").value.trim() });
+    save(STORAGE.trusted, trusted); renderContent();
+}
+function editTrusted(id) {
+    if (!isSovet()) return;
+    const t = trusted.find(x => x.id === id); if (!t) return;
+    const callsign = prompt("Позывной:", t.callsign); if (callsign === null) return;
+    const status = prompt("Статус:", t.status); if (status === null) return;
+    const birthDate = prompt("Дата:", t.birthDate); if (birthDate === null) return;
+    const photo = prompt("Фото:", t.photo); if (photo === null) return;
+    const note = prompt("Пометка:", t.note); if (note === null) return;
+    t.callsign = callsign.trim()||t.callsign; t.status = status.trim()||t.status; t.birthDate = birthDate.trim(); t.photo = photo.trim(); t.note = note.trim()||t.note;
+    save(STORAGE.trusted, trusted); renderContent();
+}
+function deleteTrusted(id) {
+    if (!isSovet()) return;
+    if (!confirm("Удалить?")) return;
+    trusted = trusted.filter(e => e.id !== id); save(STORAGE.trusted, trusted); renderContent();
+}
+
+function renderArtifacts() {
+    let html = `<h1>&gt; БАЗА ДАННЫХ АРТЕФАКТОВ_</h1>
+    <p class="text-warn" style="font-size:12px;">// Положительные — зелёные, отрицательные — красные.</p>`;
+    if (!artifacts.length) html += `<p class="text-warn">// Артефактов нет</p>`;
+    else {
+        const actions = canEditEntries();
+        artifacts.forEach(a => {
+            html += `<div class="artifact-card"><div class="artifact-name">${escapeHtml(a.name)}</div>
+                <div class="artifact-stats">
+                    ${artStat('Стамина', a.stamina, '')}
+                    ${artStat('Вес', a.weight, ' кг')}
+                    ${artStat('Хим.защита', a.chemProtection, '%')}
+                    ${artStat('Грав.защита', a.gravProtection, '%')}
+                    ${artStat('Терм.защита', a.thermProtection, '%')}
+                    ${artStat('Элек.защита', a.elecProtection, '%')}
+                    ${artStat('Кровь', a.blood, '')}
+                    ${artStat('Здоровье', a.health, '')}
+                    ${artStat('Радиация', a.radiation, '')}
+                    ${artStat('Защита от ближ.оружия', a.meleeProtection, '%')}
+                    ${artStat('Защита от укусов', a.biteProtection, '%')}
+                    ${artStat('Голод', a.hunger, '')}
+                    ${artStat('Жажда', a.thirst, '')}
+                    ${artStat('Шок', a.shock, '')}
+                </div>
+                ${actions ? `<div class="actions"><button class="btn warn small" onclick="editArtifact(${a.id})">✎ РЕДАКТИРОВАТЬ</button><button class="btn danger small" onclick="deleteArtifact(${a.id})">×</button></div>` : ''}
+            </div>`;
+        });
+    }
+    if (canEditEntries()) html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ АРТЕФАКТ ]</h3><form onsubmit="addArtifact(event)">
+        <label>НАЗВАНИЕ:</label><input type="text" id="artName" required>
+        <div class="stat-input"><label>Стамина:</label><input type="number" id="artStamina" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Вес (кг):</label><input type="number" id="artWeight" step="0.1" value="0" required></div>
+        <div class="stat-input"><label>Хим.защита (%):</label><input type="number" id="artChemProtection" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Грав.защита (%):</label><input type="number" id="artGravProtection" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Терм.защита (%):</label><input type="number" id="artThermProtection" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Элек.защита (%):</label><input type="number" id="artElecProtection" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Кровь:</label><input type="number" id="artBlood" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Здоровье:</label><input type="number" id="artHealth" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Радиация:</label><input type="number" id="artRadiation" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Защита от ближ.оружия (%):</label><input type="number" id="artMeleeProtection" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Защита от укусов (%):</label><input type="number" id="artBiteProtection" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Голод:</label><input type="number" id="artHunger" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Жажда:</label><input type="number" id="artThirst" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Шок:</label><input type="number" id="artShock" step="0.1" value="0"></div>
+        <button type="submit" class="btn small mt-10">+ ДОБАВИТЬ АРТЕФАКТ</button></form></div>`;
+    return html;
+}
+function artStat(label, val, unit) {
+    const cls = val >= 0 ? 'positive' : 'negative';
+    const sign = val >= 0 ? '+' : '';
+    return `<div class="stat"><span class="stat-label">${label}:</span><span class="stat-value ${cls}">${sign}${val}${unit}</span></div>`;
+}
+function addArtifact(e) {
+    e.preventDefault();
+    if (!canEditEntries()) return;
+    const g = id => parseFloat(document.getElementById(id).value) || 0;
+    const newId = artifacts.length ? Math.max(...artifacts.map(x=>x.id))+1 : 1;
+    artifacts.push({ id: newId, name: document.getElementById("artName").value.trim(), stamina: g("artStamina"), weight: g("artWeight"), chemProtection: g("artChemProtection"), gravProtection: g("artGravProtection"), thermProtection: g("artThermProtection"), elecProtection: g("artElecProtection"), blood: g("artBlood"), health: g("artHealth"), radiation: g("artRadiation"), meleeProtection: g("artMeleeProtection"), biteProtection: g("artBiteProtection"), hunger: g("artHunger"), thirst: g("artThirst"), shock: g("artShock") });
+    save(STORAGE.artifacts, artifacts); renderContent();
+}
+function editArtifact(id) {
+    if (!canEditEntries()) return;
+    const a = artifacts.find(x => x.id === id); if (!a) return;
+    const name = prompt("Название:", a.name); if (name === null) return;
+    a.name = name.trim() || a.name;
+    const fields = [['stamina','Стамина'],['weight','Вес (кг)'],['chemProtection','Хим.'],['gravProtection','Грав.'],['thermProtection','Терм.'],['elecProtection','Элек.'],['blood','Кровь'],['health','Здоровье'],['radiation','Радиация'],['meleeProtection','Ближ.оружие'],['biteProtection','Укусы'],['hunger','Голод'],['thirst','Жажда'],['shock','Шок']];
+    for (const [key, label] of fields) {
+        const v = prompt(label + ':', a[key]); if (v === null) return; a[key] = parseFloat(v) || 0;
+    }
+    save(STORAGE.artifacts, artifacts); renderContent();
+}
+function deleteArtifact(id) {
+    if (!canEditEntries()) return;
+    if (!confirm("Удалить артефакт?")) return;
+    artifacts = artifacts.filter(a => a.id !== id); save(STORAGE.artifacts, artifacts); renderContent();
+}
+
+function renderBuy() {
+    let html = `<h1>&gt; СКУПКА РЕСУРСОВ_</h1>`;
+    if (!buy.length) html += `<p class="text-warn">// Позиций нет</p>`;
+    else {
+        const actions = canEditEntries();
+        html += `<table><tr><th>ТОВАР</th><th>ЦЕНА</th>${actions?'<th>ДЕЙСТВИЕ</th>':''}</tr>`;
+        buy.forEach(b => html += `<tr><td>${escapeHtml(b.item)}</td><td>${escapeHtml(b.price)}</td>${actions?`<td><button class="btn warn small" onclick="editBuy(${b.id})">✎</button> <button class="btn danger small" onclick="deleteBuy(${b.id})">×</button></td>`:''}</tr>`);
+        html += `</table>`;
+    }
+    if (canEditEntries()) html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ ПОЗИЦИЮ ]</h3><form onsubmit="addBuy(event)">
+        <div class="row"><div style="flex:2;min-width:200px;"><label>НАИМЕНОВАНИЕ:</label><input type="text" id="buyItem" required></div>
+        <div style="flex:1;min-width:150px;"><label>ЦЕНА:</label><input type="text" id="buyPrice" required></div></div>
+        <button type="submit" class="btn small">+ ДОБАВИТЬ</button></form></div>`;
+    html += renderBuyCalculator();
+    return html;
+}
+function addBuy(e) { e.preventDefault(); if (!canEditEntries()) return; const newId = buy.length ? Math.max(...buy.map(x=>x.id))+1 : 1; buy.push({ id: newId, item: document.getElementById("buyItem").value.trim(), price: document.getElementById("buyPrice").value.trim() }); save(STORAGE.buy, buy); renderContent(); }
+function editBuy(id) { if (!canEditEntries()) return; const b = buy.find(x=>x.id===id); if (!b) return; const item = prompt("Товар:", b.item); if (item === null) return; const price = prompt("Цена:", b.price); if (price === null) return; b.item = item.trim()||b.item; b.price = price.trim()||b.price; save(STORAGE.buy, buy); renderContent(); }
+function deleteBuy(id) { if (!canEditEntries()) return; if (!confirm("Удалить?")) return; buy = buy.filter(b=>b.id!==id); save(STORAGE.buy, buy); renderContent(); }
+
+function renderBuyCalculator() {
+    return `
+<div class="calculator">
+    <h3>[ КАЛЬКУЛЯТОР СКУПКИ ]</h3>
+    <p class="text-warn" style="font-size:12px;margin-bottom:15px;">// Комиссия ISG вычитается из суммы.</p>
+    <div id="buyCalcItems"></div>
+    <button class="btn small" onclick="addBuyCalcItem()" style="margin-bottom:15px;">+ ДОБАВИТЬ ПОЗИЦИЮ</button>
+    <div class="calc-percent-row">
+        <label style="flex-shrink:0;">КОМИССИЯ ISG (%):</label>
+        <input type="number" id="buyCalcPercent" min="0" max="100" step="0.1" value="0" onchange="updateBuyCalc()" oninput="updateBuyCalc()">
+        <span class="percent-info">// Удержание группы</span>
+    </div>
+    <div class="calc-total" id="buyCalcTotal"><div class="total-line"><span>СУММА:</span><span>0 у.е.</span></div><div class="total-line sub"><span>КОМИССИЯ (0%):</span><span>−0 у.е.</span></div><div class="total-line final"><span>К ВЫПЛАТЕ:</span><span>0 у.е.</span></div></div>
+    <button class="btn danger small" onclick="clearBuyCalc()" style="margin-top:10px;">ОЧИСТИТЬ</button>
+</div>`;
+}
+let buyCalcCounter = 0;
+function addBuyCalcItem() {
+    buyCalcCounter++;
+    const c = document.getElementById("buyCalcItems"); if (!c) return;
+    const div = document.createElement("div"); div.className = "calc-item"; div.id = `buy-calc-item-${buyCalcCounter}`;
+    let options = '<option value="">-- Выберите --</option>';
+    buy.forEach(b => options += `<option value="${b.id}" data-price="${b.price}">${escapeHtml(b.item)}</option>`);
+    div.innerHTML = `<select onchange="updateBuyCalc()">${options}</select><input type="number" min="1" value="1" oninput="updateBuyCalc()" onchange="updateBuyCalc()"><div class="item-price">0 у.е.</div><button class="btn danger small" onclick="removeBuyCalcItem(${buyCalcCounter})">×</button>`;
+    c.appendChild(div); updateBuyCalc();
+}
+function removeBuyCalcItem(id) { const el = document.getElementById(`buy-calc-item-${id}`); if (el) { el.remove(); updateBuyCalc(); } }
+function updateBuyCalc() {
+    let subtotal = 0;
+    document.querySelectorAll("#buyCalcItems .calc-item").forEach(item => {
+        const sel = item.querySelector("select"), qty = parseInt(item.querySelector("input").value) || 0;
+        const opt = sel.options[sel.selectedIndex];
+        const price = parseFloat((opt?.dataset.price || "0").replace(/[^0-9.]/g, '')) || 0;
+        const t = price * qty; item.querySelector(".item-price").textContent = `${t} у.е.`; subtotal += t;
+    });
+    const percent = parseFloat(document.getElementById("buyCalcPercent")?.value || 0) || 0;
+    const commission = subtotal * percent / 100, payout = subtotal - commission;
+    const td = document.getElementById("buyCalcTotal");
+    if (td) td.innerHTML = `<div class="total-line"><span>СУММА:</span><span>${subtotal} у.е.</span></div><div class="total-line sub"><span>КОМИССИЯ (${percent}%):</span><span>−${commission.toFixed(2)} у.е.</span></div><div class="total-line final"><span>К ВЫПЛАТЕ:</span><span>${payout.toFixed(2)} у.е.</span></div>`;
+}
+function clearBuyCalc() { const c = document.getElementById("buyCalcItems"); if (c) c.innerHTML = ""; const p = document.getElementById("buyCalcPercent"); if (p) p.value = 0; updateBuyCalc(); }
+
+function renderSell() {
+    let html = `<h1>&gt; КАТАЛОГ ПРОДАЖ_</h1>
+    <p class="text-warn" style="font-size:12px;">// Группы товаров. Клик по заголовку — свернуть/развернуть.</p>`;
+    if (!sell.length) html += `<p class="text-warn">// Каталог пуст</p>`;
+    else {
+        const actions = canEditEntries();
+        const groups = {}; sell.forEach(s => { const g = s.group || "Без группы"; (groups[g] = groups[g] || []).push(s); });
+        html += `<div class="group-controls"><button class="btn small" onclick="toggleAllGroups(false)">▾ РАЗВЕРНУТЬ ВСЕ</button><button class="btn small warn" onclick="toggleAllGroups(true)">▸ СВЕРНУТЬ ВСЕ</button></div>`;
+        Object.keys(groups).sort().forEach(groupName => {
+            const gid = "group_" + groupName.replace(/\s+/g, '_');
+            const collapsed = collapsedGroups[gid] === true;
+            html += `<div class="group-header ${collapsed?'is-collapsed':''}" onclick="toggleGroup('${gid}')" data-group-id="${gid}"><span class="group-title">${escapeHtml(groupName)}</span><span class="group-count">[${groups[groupName].length}]</span><span class="group-toggle">${collapsed?'+':'−'}</span></div>
+            <div class="group-content ${collapsed?'collapsed':''}" id="content_${gid}">
+            <table><tr><th>ТОВАР</th><th>ЦЕНА</th>${actions?'<th>ДЕЙСТВИЕ</th>':''}</tr>`;
+            groups[groupName].forEach(s => html += `<tr><td>${escapeHtml(s.item)}</td><td>${escapeHtml(s.price)}</td>${actions?`<td><button class="btn warn small" onclick="event.stopPropagation();editSell(${s.id})">✎</button> <button class="btn danger small" onclick="event.stopPropagation();deleteSell(${s.id})">×</button></td>`:''}</tr>`);
+            html += `</table></div>`;
+        });
+    }
+    if (canEditEntries()) html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ ПОЗИЦИЮ ]</h3><form onsubmit="addSell(event)">
+        <div class="row"><div style="flex:2;min-width:200px;"><label>НАИМЕНОВАНИЕ:</label><input type="text" id="sellItem" required></div>
+        <div style="flex:1;min-width:150px;"><label>ЦЕНА:</label><input type="text" id="sellPrice" required></div>
+        <div style="flex:1;min-width:150px;"><label>ГРУППА:</label><input type="text" id="sellGroup" required placeholder="напр. Снаряжение"></div></div>
+        <button type="submit" class="btn small">+ ДОБАВИТЬ</button></form></div>`;
+    html += renderSellCalculator();
+    return html;
+}
+function toggleGroup(gid) {
+    const c = document.getElementById("content_" + gid), h = document.querySelector(`.group-header[data-group-id="${gid}"]`);
+    if (!c || !h) return;
+    if (c.classList.contains("collapsed")) { c.classList.remove("collapsed"); h.classList.remove("is-collapsed"); h.querySelector(".group-toggle").textContent="−"; collapsedGroups[gid]=false; }
+    else { c.classList.add("collapsed"); h.classList.add("is-collapsed"); h.querySelector(".group-toggle").textContent="+"; collapsedGroups[gid]=true; }
+}
+function toggleAllGroups(collapse) {
+    document.querySelectorAll(".group-content").forEach(c => { const gid = c.id.replace("content_",""); c.classList.toggle("collapsed", collapse); collapsedGroups[gid] = collapse; });
+    document.querySelectorAll(".group-header").forEach(h => { const t = h.querySelector(".group-toggle"); h.classList.toggle("is-collapsed", collapse); if (t) t.textContent = collapse ? "+" : "−"; });
+}
+function restoreGroupStates() { Object.keys(collapsedGroups).forEach(gid => { const c=document.getElementById("content_"+gid),h=document.querySelector(`.group-header[data-group-id="${gid}"]`); if (!c||!h) return; if (collapsedGroups[gid]) { c.classList.add("collapsed"); h.classList.add("is-collapsed"); const t=h.querySelector(".group-toggle"); if(t)t.textContent="+"; } else { c.classList.remove("collapsed"); h.classList.remove("is-collapsed"); const t=h.querySelector(".group-toggle"); if(t)t.textContent="−"; } }); }
+
+function renderSellCalculator() {
+    return `
+<div class="calculator">
+    <h3>[ КАЛЬКУЛЯТОР ПРОДАЖИ ]</h3>
+    <div id="sellCalcItems"></div>
+    <button class="btn small" onclick="addSellCalcItem()" style="margin-bottom:15px;">+ ДОБАВИТЬ ПОЗИЦИЮ</button>
+    <div class="calc-total" id="sellCalcTotal"><div class="total-line final"><span>ИТОГО К ОПЛАТЕ:</span><span>0 у.е.</span></div></div>
+    <button class="btn danger small" onclick="clearSellCalc()" style="margin-top:10px;">ОЧИСТИТЬ</button>
+</div>`;
+}
+let sellCalcCounter = 0;
+function addSellCalcItem() {
+    sellCalcCounter++;
+    const c = document.getElementById("sellCalcItems"); if (!c) return;
+    const div = document.createElement("div"); div.className = "calc-item"; div.id = `sell-calc-item-${sellCalcCounter}`;
+    let options = '<option value="">-- Выберите --</option>';
+    sell.forEach(s => options += `<option value="${s.id}" data-price="${s.price}">${escapeHtml(s.item)} [${escapeHtml(s.group||'—')}]</option>`);
+    div.innerHTML = `<select onchange="updateSellCalc()">${options}</select><input type="number" min="1" value="1" oninput="updateSellCalc()"><div class="item-price">0 у.е.</div><button class="btn danger small" onclick="removeSellCalcItem(${sellCalcCounter})">×</button>`;
+    c.appendChild(div); updateSellCalc();
+}
+function removeSellCalcItem(id) { const el = document.getElementById(`sell-calc-item-${id}`); if (el) { el.remove(); updateSellCalc(); } }
+function updateSellCalc() {
+    let subtotal = 0;
+    document.querySelectorAll("#sellCalcItems .calc-item").forEach(item => {
+        const sel = item.querySelector("select"), qty = parseInt(item.querySelector("input").value) || 0;
+        const opt = sel.options[sel.selectedIndex];
+        const price = parseFloat((opt?.dataset.price || "0").replace(/[^0-9.]/g, '')) || 0;
+        const t = price * qty; item.querySelector(".item-price").textContent = `${t} у.е.`; subtotal += t;
+    });
+    const td = document.getElementById("sellCalcTotal");
+    if (td) td.innerHTML = `<div class="total-line final"><span>ИТОГО К ОПЛАТЕ:</span><span>${subtotal.toFixed(2)} у.е.</span></div>`;
+}
+function clearSellCalc() { const c = document.getElementById("sellCalcItems"); if (c) c.innerHTML = ""; updateSellCalc(); }
+
+function addSell(e) { e.preventDefault(); if (!canEditEntries()) return; const newId = sell.length ? Math.max(...sell.map(x=>x.id))+1 : 1; sell.push({ id: newId, item: document.getElementById("sellItem").value.trim(), price: document.getElementById("sellPrice").value.trim(), group: document.getElementById("sellGroup").value.trim() }); save(STORAGE.sell, sell); renderContent(); }
+function editSell(id) { if (!canEditEntries()) return; const s = sell.find(x=>x.id===id); if (!s) return; const item = prompt("Товар:", s.item); if (item===null) return; const price = prompt("Цена:", s.price); if (price===null) return; const group = prompt("Группа:", s.group); if (group===null) return; s.item=item.trim()||s.item; s.price=price.trim()||s.price; s.group=group.trim()||s.group; save(STORAGE.sell, sell); renderContent(); }
+function deleteSell(id) { if (!canEditEntries()) return; if (!confirm("Удалить?")) return; sell = sell.filter(s=>s.id!==id); save(STORAGE.sell, sell); renderContent(); }
+
+function renderReports() {
+    let html = `<h1>&gt; ЛЕНТА ОТЧЁТОВ_</h1>`;
+    if (!isGuest()) html += `<div class="form-block"><h3>[ НОВЫЙ ОТЧЁТ ]</h3><form onsubmit="addReport(event)">
+        <label>ЗАГОЛОВОК:</label><input type="text" id="repTitle" required maxlength="100">
+        <label>ДОСТУП:</label><select id="repAccess"><option value="boets">БОЕЦ</option><option value="sovet">СОВЕТ</option></select>
+        <label>ТЕКСТ:</label><textarea id="repText" required rows="5"></textarea>
+        <button type="submit" class="btn">→ ОПУБЛИКОВАТЬ</button></form></div>`;
+    const visible = [...reports].sort((a,b)=>b.id-a.id).filter(canSeeReport);
+    if (!visible.length) html += `<p class="text-warn">// Отчётов нет</p>`;
+    else visible.forEach(r => {
+        const restricted = r.access === "sovet";
+        html += `<div class="report ${restricted?'restricted':''}">
+            <div class="meta">#${r.id} · ${escapeHtml(r.date)} · АВТОР: ${escapeHtml(r.author)} [${r.role.toUpperCase()}] · ДОСТУП: ${r.access.toUpperCase()}${restricted?' · <span class="text-warn">[ТОЛЬКО СОВЕТ]</span>':''}</div>
+            <div class="title">&gt; ${escapeHtml(r.title)}</div>
+            <div class="body">${escapeHtml(r.text)}</div>
+            <div class="actions">${canEditReport(r)?`<button class="btn small" onclick="editReport(${r.id})">✎ РЕД.</button>`:''}${canDeleteReport(r)?`<button class="btn danger small" onclick="deleteReport(${r.id})">×</button>`:''}</div>
+        </div>`;
+    });
+    return html;
+}
+function addReport(e) { e.preventDefault(); if (isGuest()) return; const newId = reports.length ? Math.max(...reports.map(x=>x.id))+1 : 1; reports.push({ id: newId, title: document.getElementById("repTitle").value.trim(), author: session.callsign, role: session.role, access: document.getElementById("repAccess").value, date: new Date().toISOString().slice(0,10), text: document.getElementById("repText").value.trim() }); save(STORAGE.reports, reports); renderContent(); }
+function deleteReport(id) { const r = reports.find(x=>x.id===id); if (!r || !canDeleteReport(r)) return; if (!confirm(`Удалить "${r.title}"?`)) return; reports = reports.filter(x=>x.id!==id); save(STORAGE.reports, reports); renderContent(); }
+function editReport(id) { const r = reports.find(x=>x.id===id); if (!r || !canEditReport(r)) return; const t = prompt("Заголовок:", r.title); if (t===null) return; const n = prompt("Текст:", r.text); if (n===null) return; r.title=t.trim()||r.title; r.text=n.trim()||r.text; save(STORAGE.reports, reports); renderContent(); }
+
+function openAdmin() {
+    if (!canManageTabs()) { alert("[ОТКАЗ]"); return; }
+    renderAdmin();
+    renderFirebasePanel();
+    openModal("adminModal");
+}
+
+function renderAdmin() {
+    let fhtml = `<table style="font-size:12px;"><tr><th>ПОЗЫВНОЙ</th><th>ПАРОЛЬ</th><th>РАНГ</th><th>СТАТУС</th><th>КОД</th><th>ДЕЙСТВИЕ</th></tr>`;
+    fighters.forEach(f => {
+        const code = generateActivationCode(f);
+        fhtml += `<tr><td>${escapeHtml(f.callsign)}</td><td>${escapeHtml(f.password)}</td><td>БОЕЦ</td><td>${escapeHtml(f.status)}</td><td><span class="activation-code" onclick="copyCode('${code}')" title="Клик — копировать">${code}</span></td><td><button class="btn danger small" onclick="removeFighter('${escapeHtml(f.callsign)}')">×</button></td></tr>`;
+    });
+    document.getElementById("adminFightersList").innerHTML = fhtml + `</table>`;
+
+    let html = `<table style="font-size:12px;"><tr><th>ID</th><th>НАЗВАНИЕ</th><th>МИН.РОЛЬ</th><th>ДЕЙСТВИЕ</th></tr>`;
+    tabs.forEach(t => { const locked=["home","reports"].includes(t.id); html += `<tr><td>${escapeHtml(t.id)}</td><td>${escapeHtml(t.label)}</td><td>${t.minRole.toUpperCase()}</td><td>${locked?'<span class="text-warn">базовая</span>':`<button class="btn danger small" onclick="removeTab('${t.id}')">×</button>`}</td></tr>`; });
+    document.getElementById("adminTabsList").innerHTML = html + `</table>`;
+
+    let rhtml = `<table style="font-size:12px;"><tr><th>#</th><th>ЗАГОЛОВОК</th><th>АВТОР</th><th>ДОСТУП</th><th>ДЕЙСТВИЕ</th></tr>`;
+    reports.forEach(r => rhtml += `<tr><td>${r.id}</td><td>${escapeHtml(r.title)}</td><td>${escapeHtml(r.author)}</td><td>${r.access.toUpperCase()}</td><td><button class="btn danger small" onclick="deleteReport(${r.id});renderAdmin();">×</button></td></tr>`);
+    document.getElementById("adminReportsList").innerHTML = rhtml + `</table>`;
+}
+
+function copyCode(code) {
+    navigator.clipboard.writeText(code).then(() => toast('Код скопирован в буфер', 'cloud'));
+}
+
+function registerFighter(e) {
+    e.preventDefault();
+    if (!isSovet()) return;
+    const callsign = document.getElementById("fighterCallsign").value.trim().toUpperCase();
+    const password = document.getElementById("fighterPass").value;
+    const rank = "2";
+    const status = document.getElementById("fighterStatus").value;
+    const note = document.getElementById("fighterNote").value.trim();
+    if (fighters.some(f => f.callsign === callsign)) { alert("[ОШИБКА] Уже существует."); return; }
+    if (callsign === SOVET_CALLSIGN) { alert("[ОШИБКА] Зарезервирован."); return; }
+    const fighter = { callsign, password, rank, status, note };
+    fighters.push(fighter);
+    save(STORAGE.fighters, fighters); // авто-синхронизация в облако
+    e.target.reset();
+    renderAdmin();
+    renderFirebasePanel();
+    const code = generateActivationCode(fighter);
+    alert(`[СИСТЕМА] Боец "${callsign}" зарегистрирован.\n\nКОД АКТИВАЦИИ:\n${code}\n\n${fbStatus === 'online' ? '☁ Данные уже отправлены в облако.' : '⚠ Данные в LOCAL. Подключите Firebase для синхронизации.'}`);
+}
+
+function removeFighter(callsign) {
+    if (!isSovet()) return;
+    if (!confirm(`Удалить "${callsign}"?`)) return;
+    fighters = fighters.filter(f => f.callsign !== callsign);
+    save(STORAGE.fighters, fighters); renderAdmin();
+}
+
+function addTab(e) {
+    e.preventDefault();
+    if (!canManageTabs()) return;
+    const id = document.getElementById("newTabId").value.trim().toLowerCase();
+    const label = document.getElementById("newTabLabel").value.trim();
+    const role = document.getElementById("newTabRole").value;
+    if (tabs.some(t => t.id === id)) { alert("[ОШИБКА] ID существует."); return; }
+    tabs.push({ id, label, minRole: role });
+    save(STORAGE.tabs, tabs); e.target.reset(); renderAdmin(); renderMenu();
+}
+function removeTab(id) {
+    if (!canManageTabs()) return;
+    if (["home","reports"].includes(id)) { alert("[ОТКАЗ] Базовая вкладка."); return; }
+    if (!confirm(`Удалить "${id}"?`)) return;
+    tabs = tabs.filter(t => t.id !== id); save(STORAGE.tabs, tabs);
+    if (activeTab === id) activeTab = "home";
+    renderAdmin(); renderMenu(); renderContent();
+}
+
+function resetAll() {
+    tabs = JSON.parse(JSON.stringify(DEFAULT_TABS));
+    fighters = JSON.parse(JSON.stringify(DEFAULT_FIGHTERS));
+    stalkers = JSON.parse(JSON.stringify(DEFAULT_STALKERS));
+    trusted = JSON.parse(JSON.stringify(DEFAULT_TRUSTED));
+    artifacts = JSON.parse(JSON.stringify(DEFAULT_ARTIFACTS));
+    buy = JSON.parse(JSON.stringify(DEFAULT_BUY));
+    sell = JSON.parse(JSON.stringify(DEFAULT_SELL));
+    reports = JSON.parse(JSON.stringify(DEFAULT_REPORTS));
+    [tabs,fighters,stalkers,trusted,artifacts,buy,sell,reports].forEach((v,i) => {
+        const key = ['tabs','fighters','stalkers','trusted','artifacts','buy','sell','reports'][i];
+        save(STORAGE[key], v);
+    });
+    activeTab = "home"; collapsedGroups = {};
+    renderAll();
+    alert("[СИСТЕМА] Данные сброшены.");
+}
+
+function escapeHtml(s) {
+    if (s === undefined || s === null) return "";
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+function renderAll() { renderMenu(); renderContent(); }
+
+/* ============================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ============================================================ */
+document.getElementById("nodeId").textContent = "ISG-" + (1000 + Math.floor(Math.random()*9000));
+renderAll();
+updateConnectionIndicator();
+
+// авто-подключение к Firebase, если был настроен ранее
+if (typeof window.firebase !== 'undefined') tryAutoConnect();
+
+document.querySelectorAll(".modal").forEach(m => { m.addEventListener("click", (e) => { if (e.target === m) m.classList.remove("open"); }); });
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+        document.querySelectorAll(".modal.open").forEach(m => m.classList.remove("open"));
+        document.getElementById("photoModal").classList.remove("open");
+    }
+});
+
+console.log("%c[ISG] Система инициализирована. Firebase:", "color:#00ff41;font-family:monospace;font-weight:bold;",
+    window.firebase ? "SDK загружен ✓" : "SDK НЕ загружен ✗");
+</script>
+
+</body>
+</html>
