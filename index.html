@@ -423,9 +423,7 @@ tr:hover td { background: rgba(0,255,65,0.05); }
         <div id="adminReportsList"></div>
         <hr style="border-color:#ffb000;margin:20px 0;">
 
-        <div class="row">
-            <button class="btn danger small" onclick="if(confirm('Сбросить ВСЕ данные к демо-состоянию?')){resetAll();}">! СБРОС К ДЕМО-ДАННЫМ</button>
-        </div>
+        <button class="btn danger small" onclick="if(confirm('Сбросить ВСЕ данные к демо-состоянию?')){resetAll();}">! СБРОС К ДЕМО-ДАННЫМ</button>
     </div>
 </div>
 
@@ -489,9 +487,9 @@ const DEFAULT_ARTIFACTS = [
     { id: 2, name: "Колобок", stamina: 10, weight: 1.2, chemProtection: 0, gravProtection: 0, thermProtection: 0, elecProtection: 0, blood: 0, health: 15, radiation: 0, meleeProtection: 0, biteProtection: 0, hunger: 0, thirst: 0, shock: 0 }
 ];
 const DEFAULT_REPORTS = [
-    { id: 1, title: "Выход в Зону-0", author: "ЛИСА", role: "boets", access: "boets", date: "2026-11-22", text: "Обследован периметр объекта «Чёрный обелиск»." },
-    { id: 2, title: "Отчёт по кристаллам", author: "ВОРОН-7", role: "boets", access: "boets", date: "2026-11-20", text: "Доставленные образцы проходят проверку." },
-    { id: 3, title: "СОВЕРШЕННО СЕКРЕТНО: Операция «Тишина»", author: "ВЫСШИЙ СОВЕТ", role: "sovet", access: "sovet", date: "2026-11-18", text: "Только для членов Совета." }
+    { id: 1, title: "Выход в Зону-0", author: "ЛИСА", role: "boets", access: "boets", date: "2026-11-22", text: "Обследован периметр объекта «Чёрный обелиск».\nОхрана — 4 единицы.\nРекомендую повторный выход через 72 часа." },
+    { id: 2, title: "Отчёт по кристаллам", author: "ВОРОН-7", role: "boets", access: "boets", date: "2026-11-20", text: "Доставленные образцы проходят проверку.\nУровень аномалии 3 по шкале ISG." },
+    { id: 3, title: "СОВЕРШЕННО СЕКРЕТНО: Операция «Тишина»", author: "ВЫСШИЙ СОВЕТ", role: "sovet", access: "sovet", date: "2026-11-18", text: "Только для членов Совета.\nЛиквидация ячейки в Секторе-4." }
 ];
 const DEFAULT_TABS = [
     { id: "home", label: "ГЛАВНАЯ", minRole: "guest" },
@@ -507,7 +505,7 @@ const DEFAULT_TABS = [
 let collapsedGroups = {};
 
 function load(key, fallback) { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch(e) { return fallback; } }
-function save(key, data) { localStorage.setItem(key, JSON.stringify(data)); if (!isApplyingRemote) syncStateToCloud(); }
+function save(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
 
 let tabs = load(STORAGE.tabs, DEFAULT_TABS);
 let fighters = load(STORAGE.fighters, DEFAULT_FIGHTERS);
@@ -527,9 +525,9 @@ let fbApp = null;
 let fbDb = null;
 let fbStateRef = null;
 let fbListener = null;
-let isApplyingRemote = false; // защита от бесконечного цикла
+let isApplyingRemote = false;
 let autoSyncEnabled = true;
-let fbStatus = 'offline'; // offline | online | syncing
+let fbStatus = 'offline';
 
 function getFbConfig() { return load(STORAGE.fbConfig, null); }
 
@@ -574,7 +572,6 @@ function initFirebase(config) {
             if (!window.firebase) return reject(new Error("Firebase SDK не загружен"));
             if (!config.apiKey || !config.databaseURL) return reject(new Error("Конфиг incomplete"));
 
-            // Если уже инициализирован — пересоздаём
             if (fbApp) {
                 try { firebase.app('[ISG]').delete(); } catch(e){}
                 fbApp = null;
@@ -662,13 +659,12 @@ function setCloudState(state) {
         fbStatus = 'online';
         updateConnectionIndicator();
     }).catch(err => {
-        fbStatus = 'online'; // всё равно подключены, но ошибка записи
+        fbStatus = 'online';
         updateConnectionIndicator();
         toast('Ошибка записи: ' + err.message, 'error');
     });
 }
 
-// === UI FIREBASE ПАНЕЛИ ===
 function renderFirebasePanel() {
     const config = getFbConfig();
     const panel = document.getElementById('firebasePanel');
@@ -686,34 +682,13 @@ function renderFirebasePanel() {
 </div>
 
 <div class="fb-grid">
-    <div>
-        <label>API KEY:</label>
-        <input type="text" id="fbApiKey" value="${config?.apiKey || ''}" autocomplete="off">
-    </div>
-    <div>
-        <label>AUTH DOMAIN:</label>
-        <input type="text" id="fbAuthDomain" value="${config?.authDomain || ''}" autocomplete="off" placeholder="проект.firebaseapp.com">
-    </div>
-    <div>
-        <label>DATABASE URL:</label>
-        <input type="text" id="fbDatabaseUrl" value="${config?.databaseURL || ''}" autocomplete="off" placeholder="https://xxx.firebaseio.com">
-    </div>
-    <div>
-        <label>PROJECT ID:</label>
-        <input type="text" id="fbProjectId" value="${config?.projectId || ''}" autocomplete="off">
-    </div>
-    <div>
-        <label>STORAGE BUCKET:</label>
-        <input type="text" id="fbStorageBucket" value="${config?.storageBucket || ''}" autocomplete="off">
-    </div>
-    <div>
-        <label>MESSAGING SENDER ID:</label>
-        <input type="text" id="fbSenderId" value="${config?.messagingSenderId || ''}" autocomplete="off">
-    </div>
-    <div>
-        <label>APP ID:</label>
-        <input type="text" id="fbAppId" value="${config?.appId || ''}" autocomplete="off">
-    </div>
+    <div><label>API KEY:</label><input type="text" id="fbApiKey" value="${config?.apiKey || ''}" autocomplete="off"></div>
+    <div><label>AUTH DOMAIN:</label><input type="text" id="fbAuthDomain" value="${config?.authDomain || ''}" autocomplete="off" placeholder="проект.firebaseapp.com"></div>
+    <div><label>DATABASE URL:</label><input type="text" id="fbDatabaseUrl" value="${config?.databaseURL || ''}" autocomplete="off" placeholder="https://xxx.firebaseio.com"></div>
+    <div><label>PROJECT ID:</label><input type="text" id="fbProjectId" value="${config?.projectId || ''}" autocomplete="off"></div>
+    <div><label>STORAGE BUCKET:</label><input type="text" id="fbStorageBucket" value="${config?.storageBucket || ''}" autocomplete="off"></div>
+    <div><label>MESSAGING SENDER ID:</label><input type="text" id="fbSenderId" value="${config?.messagingSenderId || ''}" autocomplete="off"></div>
+    <div><label>APP ID:</label><input type="text" id="fbAppId" value="${config?.appId || ''}" autocomplete="off"></div>
 </div>
 
 <div class="row">
@@ -730,7 +705,6 @@ function renderFirebasePanel() {
 2. Realtime Database → Создать базу (режим test)<br>
 3. Project Settings → General → "Your apps" → Web App → скопировать конфиг<br>
 4. Вставьте значения сюда и нажмите "ПОДКЛЮЧИТЬ"<br>
-5. Настройте правила (Rules) — см. документацию ниже<br>
 <br>
 ! Данные хранятся ОТКРЫТО в облаке. Не вводите реальные секреты!
 </p>
@@ -843,12 +817,9 @@ function tryAutoConnect() {
         if (fbStateRef) {
             fbStateRef.once('value').then(snap => {
                 const data = snap.val();
-                if (data && data._meta && data._meta.updatedAt > (Date.now() - 5000)) {
-                    applyCloudState(data);
-                } else if (data) {
+                if (data) {
                     applyCloudState(data);
                 } else {
-                    // облако пусто — первым делом пушим локальные данные
                     pushToCloud();
                 }
             });
@@ -860,7 +831,7 @@ function tryAutoConnect() {
 }
 
 /* ============================================================
-   КОДЫ АКТИВАЦИИ (резервный доступ)
+   КОДЫ АКТИВАЦИИ
    ============================================================ */
 function generateActivationCode(fighter) {
     const data = { callsign: fighter.callsign, password: fighter.password, rank: fighter.rank, status: fighter.status, note: fighter.note, timestamp: Date.now() };
@@ -934,7 +905,7 @@ function handleCodeLogin(e) {
     if (data.error) { alert("[ОШИБКА] " + data.error); return; }
     const existing = fighters.find(f => f.callsign.toUpperCase() === data.callsign.toUpperCase());
     if (existing) { if (existing.password !== data.password) { alert("[ОШИБКА] Пароль не совпадает."); return; } }
-    else { fighters.push({ callsign: data.callsign, password: data.password, rank: data.rank || "2", status: data.status || "АКТИВЕН", note: data.note || "" }); save(STORAGE.fighters, fighters); }
+    else { fighters.push({ callsign: data.callsign, password: data.password, rank: data.rank || "2", status: data.status || "АКТИВЕН", note: data.note || "" }); save(STORAGE.fighters, fighters); syncStateToCloud(); }
     session = { callsign: data.callsign, role: "boets" }; save(STORAGE.session, session);
     closeModal("loginModal"); renderAll();
     toast("Активация успешна, " + data.callsign, "cloud");
@@ -975,7 +946,7 @@ function renderContent() {
     const tab = tabs.find(t => t.id === activeTab);
     const content = document.getElementById("content");
     if (!tab) { content.innerHTML = `<div class="ascii-box danger">[ОШИБКА] Вкладка не найдена.</div>`; return; }
-    if (!canSeeTab(tab)) { content.innerHTML = `<div class="ascii-box danger">[ОТКАЗ В ДОСТУПЕ]\n"${tab.label}"\nТребуется: ${tab.minRole.toUpperCase()}.</div>`; return; }
+    if (!canSeeTab(tab)) { content.innerHTML = `<div class="ascii-box danger">[ОТКАЗ В ДОСТУПЕ]\n"${tab.label}"\nТребуется: ${tab.minRole.toUpperCase()}.\nВаш уровень: ${currentRole().toUpperCase()}.</div>`; return; }
     content.innerHTML = renderTabContent(tab.id);
     if (tab.id === "sell") restoreGroupStates();
 }
@@ -1041,14 +1012,16 @@ function renderAgents() {
 function renderAgentsTable(list) {
     if (!list.length) return `<p class="text-warn">// Нет записей</p>`;
     let html = `<table><tr><th>ПОЗЫВНОЙ</th><th>РАНГ</th><th>СТАТУС</th><th>ПОМЕТКА</th></tr>`;
-    list.forEach(e => html += `<tr><td>${escapeHtml(e.callsign)}</td><td>БОЕЦ (${escapeHtml(e.rank)})</td><td>${escapeHtml(e.status)}</td><td>${escapeHtml(e.note)}</td></tr>`);
-    return html + `</table>`;
+    list.forEach(e => { html += `<tr><td>${escapeHtml(e.callsign)}</td><td>БОЕЦ (${escapeHtml(e.rank)})</td><td>${escapeHtml(e.status)}</td><td>${escapeHtml(e.note)}</td></tr>`; });
+    html += `</table>`;
+    return html;
 }
 function filterAgents() {
     const q = document.getElementById("agentsSearch").value.toLowerCase();
-    const list = fighters.filter(f => f.rank === "2").filter(e =>
-        e.callsign.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.note.toLowerCase().includes(q));
-    document.getElementById("agentsTable").innerHTML = renderAgentsTable(list);
+    const boetsOnly = fighters.filter(f => f.rank === "2");
+    document.getElementById("agentsTable").innerHTML = renderAgentsTable(boetsOnly.filter(e =>
+        e.callsign.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.note.toLowerCase().includes(q)
+    ));
 }
 
 function renderStalkers() {
@@ -1056,193 +1029,296 @@ function renderStalkers() {
 <p class="text-warn" style="font-size:12px;">// Вольные сталкеры. Клик по фото — просмотр.</p>
 <div class="row mb-10"><input type="text" id="stalkersSearch" placeholder="ПОИСК..." oninput="filterStalkers()" style="flex:1;min-width:200px;margin:0;"></div>
 <div id="stalkersTable">${renderStalkersTable(stalkers)}</div>`;
-    if (canEditEntries()) html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ СТАЛКЕРА ]</h3><form onsubmit="addStalker(event)">
+    if (canEditEntries()) {
+        html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ СТАЛКЕРА ]</h3><form onsubmit="addStalker(event)">
         <div class="row">
             <div style="flex:1;min-width:150px;"><label>ПОЗЫВНОЙ:</label><input type="text" id="stCallsign" required></div>
-            <div style="flex:1;min-width:120px;"><label>РАНГ:</label><select id="stRank"><option>1</option><option>2</option><option>3</option></select></div>
+            <div style="flex:1;min-width:120px;"><label>РАНГ (1-3):</label><select id="stRank"><option>1</option><option>2</option><option>3</option></select></div>
             <div style="flex:1;min-width:120px;"><label>СТАТУС:</label><select id="stStatus"><option>АКТИВЕН</option><option>НА ЗАДАНИИ</option><option>В БАРЕРЕ</option><option>ПРОПАЛ</option><option>МЁРТВ</option></select></div>
-            <div style="flex:1;min-width:150px;"><label>ДАТА РОЖД.:</label><input type="date" id="stBirthDate"></div>
+            <div style="flex:1;min-width:150px;"><label>ДАТА РОЖДЕНИЯ:</label><input type="date" id="stBirthDate"></div>
         </div>
-        <label>ФОТО URL:</label><input type="text" id="stPhotoUrl" placeholder="https://...">
+        <label>ФОТО (URL или файл):</label>
+        <input type="text" id="stPhotoUrl" placeholder="https://...">
+        <input type="file" id="stPhotoFile" accept="image/*" onchange="handlePhotoUpload(event, 'stPhotoPreview')">
+        <img id="stPhotoPreview" class="photo-preview" style="display:none;">
         <label>ПОМЕТКА:</label><textarea id="stNote" required></textarea>
         <button type="submit" class="btn small">+ ДОБАВИТЬ</button></form></div>`;
+    }
     return html;
 }
 function renderStalkersTable(list) {
     if (!list.length) return `<p class="text-warn">// Нет записей</p>`;
     const actions = canEditEntries();
-    let html = `<table><tr><th>ФОТО</th><th>ПОЗЫВНОЙ</th><th>РАНГ</th><th>СТАТУС</th><th>ДАТА</th><th>ПОМЕТКА</th>${actions?'<th>ДЕЙСТВИЕ</th>':''}</tr>`;
+    let html = `<table><tr><th>ФОТО</th><th>ПОЗЫВНОЙ</th><th>РАНГ</th><th>СТАТУС</th><th>ДАТА РОЖД.</th><th>ПОМЕТКА</th>${actions?'<th>ДЕЙСТВИЕ</th>':''}</tr>`;
     list.forEach(e => {
         const photo = e.photo ? `<img src="${e.photo}" class="photo-thumb" onclick="openPhoto('${escapeHtml(e.photo)}','${escapeHtml(e.callsign)}')">` : '<span class="text-warn">—</span>';
         html += `<tr><td>${photo}</td><td>${escapeHtml(e.callsign)}</td><td>${escapeHtml(e.rank)}</td><td>${escapeHtml(e.status)}</td><td>${e.birthDate||'—'}</td><td>${escapeHtml(e.note)}</td>${actions?`<td><button class="btn warn small" onclick="editStalker(${e.id})">✎</button> <button class="btn danger small" onclick="deleteStalker(${e.id})">×</button></td>`:''}</tr>`;
     });
-    return html + `</table>`;
+    html += `</table>`;
+    return html;
 }
 function filterStalkers() {
     const q = document.getElementById("stalkersSearch").value.toLowerCase();
     document.getElementById("stalkersTable").innerHTML = renderStalkersTable(stalkers.filter(e =>
-        e.callsign.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.note.toLowerCase().includes(q)));
+        e.callsign.toLowerCase().includes(q) || e.rank.toLowerCase().includes(q) ||
+        e.status.toLowerCase().includes(q) || e.note.toLowerCase().includes(q)
+    ));
+}
+function handlePhotoUpload(event, previewId) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = document.getElementById(previewId);
+        img.src = e.target.result;
+        img.style.display = 'block';
+        img.dataset.photoData = e.target.result;
+    };
+    reader.readAsDataURL(file);
 }
 function addStalker(e) {
     e.preventDefault();
     if (!canEditEntries()) return;
     const newId = stalkers.length ? Math.max(...stalkers.map(x=>x.id))+1 : 1;
-    stalkers.push({ id: newId, callsign: document.getElementById("stCallsign").value.trim(), rank: document.getElementById("stRank").value, status: document.getElementById("stStatus").value, birthDate: document.getElementById("stBirthDate").value, note: document.getElementById("stNote").value.trim(), photo: document.getElementById("stPhotoUrl").value.trim() });
-    save(STORAGE.stalkers, stalkers); renderContent();
+    const photoPreview = document.getElementById("stPhotoPreview");
+    stalkers.push({
+        id: newId,
+        callsign: document.getElementById("stCallsign").value.trim(),
+        rank: document.getElementById("stRank").value,
+        status: document.getElementById("stStatus").value,
+        birthDate: document.getElementById("stBirthDate").value,
+        note: document.getElementById("stNote").value.trim(),
+        photo: photoPreview.dataset.photoData || document.getElementById("stPhotoUrl").value.trim() || ""
+    });
+    save(STORAGE.stalkers, stalkers);
+    syncStateToCloud();
+    renderContent();
 }
 function editStalker(id) {
     if (!canEditEntries()) return;
     const s = stalkers.find(x => x.id === id); if (!s) return;
     const callsign = prompt("Позывной:", s.callsign); if (callsign === null) return;
-    const rank = prompt("Ранг:", s.rank); if (rank === null) return;
+    const rank = prompt("Ранг (1/2/3):", s.rank); if (rank === null) return;
     const status = prompt("Статус:", s.status); if (status === null) return;
     const birthDate = prompt("Дата рождения:", s.birthDate); if (birthDate === null) return;
-    const photo = prompt("Фото URL:", s.photo); if (photo === null) return;
+    const photo = prompt("Фото (URL):", s.photo); if (photo === null) return;
     const note = prompt("Пометка:", s.note); if (note === null) return;
-    s.callsign = callsign.trim()||s.callsign; s.rank = rank.trim()||s.rank; s.status = status.trim()||s.status; s.birthDate = birthDate.trim(); s.photo = photo.trim(); s.note = note.trim()||s.note;
-    save(STORAGE.stalkers, stalkers); renderContent();
+    s.callsign = callsign.trim()||s.callsign; s.rank = rank.trim()||s.rank;
+    s.status = status.trim()||s.status; s.birthDate = birthDate.trim();
+    s.photo = photo.trim(); s.note = note.trim()||s.note;
+    save(STORAGE.stalkers, stalkers);
+    syncStateToCloud();
+    renderContent();
 }
 function deleteStalker(id) {
     if (!canEditEntries()) return;
     if (!confirm("Удалить сталкера?")) return;
-    stalkers = stalkers.filter(e => e.id !== id); save(STORAGE.stalkers, stalkers); renderContent();
+    stalkers = stalkers.filter(e => e.id !== id);
+    save(STORAGE.stalkers, stalkers);
+    syncStateToCloud();
+    renderContent();
 }
 
 function renderTrusted() {
     let html = `<h1>&gt; ДОВЕРЕННЫЕ СТАЛКЕРЫ_</h1>
-<p class="text-warn" style="font-size:12px;">// Проверенные контакты.</p>
+<p class="text-warn" style="font-size:12px;">// Проверенные контакты. Клик по фото — просмотр.</p>
 <div class="row mb-10"><input type="text" id="trustedSearch" placeholder="ПОИСК..." oninput="filterTrusted()" style="flex:1;min-width:200px;margin:0;"></div>
 <div id="trustedTable">${renderTrustedTable(trusted)}</div>`;
-    if (isSovet()) html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ ДОВЕРЕННОГО ]</h3><form onsubmit="addTrusted(event)">
+    if (isSovet()) {
+        html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ ДОВЕРЕННОГО — только Совет ]</h3><form onsubmit="addTrusted(event)">
         <div class="row">
             <div style="flex:1;min-width:150px;"><label>ПОЗЫВНОЙ:</label><input type="text" id="trCallsign" required></div>
             <div style="flex:1;min-width:120px;"><label>СТАТУС:</label><select id="trStatus"><option>АКТИВЕН</option><option>НА ЗАДАНИИ</option><option>В БАРЕРЕ</option><option>ПРОПАЛ</option><option>МЁРТВ</option></select></div>
-            <div style="flex:1;min-width:150px;"><label>ДАТА РОЖД.:</label><input type="date" id="trBirthDate"></div>
+            <div style="flex:1;min-width:150px;"><label>ДАТА РОЖДЕНИЯ:</label><input type="date" id="trBirthDate"></div>
         </div>
-        <label>ФОТО URL:</label><input type="text" id="trPhotoUrl" placeholder="https://...">
+        <label>ФОТО (URL или файл):</label>
+        <input type="text" id="trPhotoUrl" placeholder="https://...">
+        <input type="file" id="trPhotoFile" accept="image/*" onchange="handlePhotoUpload(event, 'trPhotoPreview')">
+        <img id="trPhotoPreview" class="photo-preview" style="display:none;">
         <label>ПОМЕТКА:</label><textarea id="trNote" required></textarea>
         <button type="submit" class="btn small">+ ДОБАВИТЬ</button></form></div>`;
+    } else if (!isGuest()) {
+        html += `<div class="ascii-box warn mt-10" data-title="[ ОГРАНИЧЕНИЕ ]">Добавление доверенных — только Высший Совет.</div>`;
+    }
     return html;
 }
 function renderTrustedTable(list) {
     if (!list.length) return `<p class="text-warn">// Нет записей</p>`;
     const actions = isSovet();
-    let html = `<table><tr><th>ФОТО</th><th>ПОЗЫВНОЙ</th><th>СТАТУС</th><th>ДАТА</th><th>ПОМЕТКА</th>${actions?'<th>ДЕЙСТВИЕ</th>':''}</tr>`;
+    let html = `<table><tr><th>ФОТО</th><th>ПОЗЫВНОЙ</th><th>СТАТУС</th><th>ДАТА РОЖД.</th><th>ПОМЕТКА</th>${actions?'<th>ДЕЙСТВИЕ</th>':''}</tr>`;
     list.forEach(e => {
         const photo = e.photo ? `<img src="${e.photo}" class="photo-thumb" onclick="openPhoto('${escapeHtml(e.photo)}','${escapeHtml(e.callsign)}')">` : '<span class="text-warn">—</span>';
         html += `<tr><td>${photo}</td><td>${escapeHtml(e.callsign)}</td><td>${escapeHtml(e.status)}</td><td>${e.birthDate||'—'}</td><td>${escapeHtml(e.note)}</td>${actions?`<td><button class="btn warn small" onclick="editTrusted(${e.id})">✎</button> <button class="btn danger small" onclick="deleteTrusted(${e.id})">×</button></td>`:''}</tr>`;
     });
-    return html + `</table>`;
+    html += `</table>`;
+    return html;
 }
 function filterTrusted() {
     const q = document.getElementById("trustedSearch").value.toLowerCase();
     document.getElementById("trustedTable").innerHTML = renderTrustedTable(trusted.filter(e =>
-        e.callsign.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.note.toLowerCase().includes(q)));
+        e.callsign.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.note.toLowerCase().includes(q)
+    ));
 }
 function addTrusted(e) {
     e.preventDefault();
     if (!isSovet()) { alert("[ОТКАЗ]"); return; }
     const newId = trusted.length ? Math.max(...trusted.map(x=>x.id))+1 : 1;
-    trusted.push({ id: newId, callsign: document.getElementById("trCallsign").value.trim(), status: document.getElementById("trStatus").value, birthDate: document.getElementById("trBirthDate").value, note: document.getElementById("trNote").value.trim(), photo: document.getElementById("trPhotoUrl").value.trim() });
-    save(STORAGE.trusted, trusted); renderContent();
+    const photoPreview = document.getElementById("trPhotoPreview");
+    trusted.push({
+        id: newId,
+        callsign: document.getElementById("trCallsign").value.trim(),
+        status: document.getElementById("trStatus").value,
+        birthDate: document.getElementById("trBirthDate").value,
+        note: document.getElementById("trNote").value.trim(),
+        photo: photoPreview.dataset.photoData || document.getElementById("trPhotoUrl").value.trim() || ""
+    });
+    save(STORAGE.trusted, trusted);
+    syncStateToCloud();
+    renderContent();
 }
 function editTrusted(id) {
     if (!isSovet()) return;
     const t = trusted.find(x => x.id === id); if (!t) return;
     const callsign = prompt("Позывной:", t.callsign); if (callsign === null) return;
     const status = prompt("Статус:", t.status); if (status === null) return;
-    const birthDate = prompt("Дата:", t.birthDate); if (birthDate === null) return;
-    const photo = prompt("Фото:", t.photo); if (photo === null) return;
+    const birthDate = prompt("Дата рождения:", t.birthDate); if (birthDate === null) return;
+    const photo = prompt("Фото (URL):", t.photo); if (photo === null) return;
     const note = prompt("Пометка:", t.note); if (note === null) return;
-    t.callsign = callsign.trim()||t.callsign; t.status = status.trim()||t.status; t.birthDate = birthDate.trim(); t.photo = photo.trim(); t.note = note.trim()||t.note;
-    save(STORAGE.trusted, trusted); renderContent();
+    t.callsign = callsign.trim()||t.callsign; t.status = status.trim()||t.status;
+    t.birthDate = birthDate.trim(); t.photo = photo.trim(); t.note = note.trim()||t.note;
+    save(STORAGE.trusted, trusted);
+    syncStateToCloud();
+    renderContent();
 }
 function deleteTrusted(id) {
     if (!isSovet()) return;
-    if (!confirm("Удалить?")) return;
-    trusted = trusted.filter(e => e.id !== id); save(STORAGE.trusted, trusted); renderContent();
+    if (!confirm("Удалить доверенного?")) return;
+    trusted = trusted.filter(e => e.id !== id);
+    save(STORAGE.trusted, trusted);
+    syncStateToCloud();
+    renderContent();
 }
 
 function renderArtifacts() {
     let html = `<h1>&gt; БАЗА ДАННЫХ АРТЕФАКТОВ_</h1>
-    <p class="text-warn" style="font-size:12px;">// Положительные — зелёные, отрицательные — красные.</p>`;
-    if (!artifacts.length) html += `<p class="text-warn">// Артефактов нет</p>`;
-    else {
+    <p class="text-warn" style="font-size:12px;">// Положительные значения — зелёные, отрицательные — красные.</p>`;
+
+    if (artifacts.length === 0) {
+        html += `<p class="text-warn">// Артефактов нет</p>`;
+    } else {
         const actions = canEditEntries();
         artifacts.forEach(a => {
-            html += `<div class="artifact-card"><div class="artifact-name">${escapeHtml(a.name)}</div>
+            html += `<div class="artifact-card">
+                <div class="artifact-name">${escapeHtml(a.name)}</div>
                 <div class="artifact-stats">
-                    ${artStat('Стамина', a.stamina, '')}
-                    ${artStat('Вес', a.weight, ' кг')}
-                    ${artStat('Хим.защита', a.chemProtection, '%')}
-                    ${artStat('Грав.защита', a.gravProtection, '%')}
-                    ${artStat('Терм.защита', a.thermProtection, '%')}
-                    ${artStat('Элек.защита', a.elecProtection, '%')}
-                    ${artStat('Кровь', a.blood, '')}
-                    ${artStat('Здоровье', a.health, '')}
-                    ${artStat('Радиация', a.radiation, '')}
-                    ${artStat('Защита от ближ.оружия', a.meleeProtection, '%')}
-                    ${artStat('Защита от укусов', a.biteProtection, '%')}
-                    ${artStat('Голод', a.hunger, '')}
-                    ${artStat('Жажда', a.thirst, '')}
-                    ${artStat('Шок', a.shock, '')}
+                    <div class="stat"><span class="stat-label">Стамина:</span><span class="stat-value ${a.stamina >= 0 ? 'positive' : 'negative'}">${a.stamina >= 0 ? '+' : ''}${a.stamina}</span></div>
+                    <div class="stat"><span class="stat-label">Вес:</span><span class="stat-value">${a.weight} кг</span></div>
+                    <div class="stat"><span class="stat-label">Защита от Химических:</span><span class="stat-value ${a.chemProtection >= 0 ? 'positive' : 'negative'}">${a.chemProtection >= 0 ? '+' : ''}${a.chemProtection}%</span></div>
+                    <div class="stat"><span class="stat-label">Защита от Гравитационных:</span><span class="stat-value ${a.gravProtection >= 0 ? 'positive' : 'negative'}">${a.gravProtection >= 0 ? '+' : ''}${a.gravProtection}%</span></div>
+                    <div class="stat"><span class="stat-label">Защита от Термических:</span><span class="stat-value ${a.thermProtection >= 0 ? 'positive' : 'negative'}">${a.thermProtection >= 0 ? '+' : ''}${a.thermProtection}%</span></div>
+                    <div class="stat"><span class="stat-label">Защита от Электрических:</span><span class="stat-value ${a.elecProtection >= 0 ? 'positive' : 'negative'}">${a.elecProtection >= 0 ? '+' : ''}${a.elecProtection}%</span></div>
+                    <div class="stat"><span class="stat-label">Кровь:</span><span class="stat-value ${a.blood >= 0 ? 'positive' : 'negative'}">${a.blood >= 0 ? '+' : ''}${a.blood}</span></div>
+                    <div class="stat"><span class="stat-label">Здоровье:</span><span class="stat-value ${a.health >= 0 ? 'positive' : 'negative'}">${a.health >= 0 ? '+' : ''}${a.health}</span></div>
+                    <div class="stat"><span class="stat-label">Радиация:</span><span class="stat-value ${a.radiation >= 0 ? 'positive' : 'negative'}">${a.radiation >= 0 ? '+' : ''}${a.radiation}</span></div>
+                    <div class="stat"><span class="stat-label">Защита от ближнего оружия:</span><span class="stat-value ${a.meleeProtection >= 0 ? 'positive' : 'negative'}">${a.meleeProtection >= 0 ? '+' : ''}${a.meleeProtection}%</span></div>
+                    <div class="stat"><span class="stat-label">Защита от укусов:</span><span class="stat-value ${a.biteProtection >= 0 ? 'positive' : 'negative'}">${a.biteProtection >= 0 ? '+' : ''}${a.biteProtection}%</span></div>
+                    <div class="stat"><span class="stat-label">Голод:</span><span class="stat-value ${a.hunger >= 0 ? 'positive' : 'negative'}">${a.hunger >= 0 ? '+' : ''}${a.hunger}</span></div>
+                    <div class="stat"><span class="stat-label">Жажда:</span><span class="stat-value ${a.thirst >= 0 ? 'positive' : 'negative'}">${a.thirst >= 0 ? '+' : ''}${a.thirst}</span></div>
+                    <div class="stat"><span class="stat-label">Шок:</span><span class="stat-value ${a.shock >= 0 ? 'positive' : 'negative'}">${a.shock >= 0 ? '+' : ''}${a.shock}</span></div>
                 </div>
-                ${actions ? `<div class="actions"><button class="btn warn small" onclick="editArtifact(${a.id})">✎ РЕДАКТИРОВАТЬ</button><button class="btn danger small" onclick="deleteArtifact(${a.id})">×</button></div>` : ''}
+                ${actions ? `<div class="actions">
+                    <button class="btn warn small" onclick="editArtifact(${a.id})">✎ РЕДАКТИРОВАТЬ</button>
+                    <button class="btn danger small" onclick="deleteArtifact(${a.id})">×</button>
+                </div>` : ''}
             </div>`;
         });
     }
-    if (canEditEntries()) html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ АРТЕФАКТ ]</h3><form onsubmit="addArtifact(event)">
-        <label>НАЗВАНИЕ:</label><input type="text" id="artName" required>
+
+    if (canEditEntries()) {
+        html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ АРТЕФАКТ ]</h3><form onsubmit="addArtifact(event)">
+        <label>НАЗВАНИЕ АРТЕФАКТА:</label>
+        <input type="text" id="artName" required>
         <div class="stat-input"><label>Стамина:</label><input type="number" id="artStamina" step="0.1" value="0"></div>
         <div class="stat-input"><label>Вес (кг):</label><input type="number" id="artWeight" step="0.1" value="0" required></div>
-        <div class="stat-input"><label>Хим.защита (%):</label><input type="number" id="artChemProtection" step="0.1" value="0"></div>
-        <div class="stat-input"><label>Грав.защита (%):</label><input type="number" id="artGravProtection" step="0.1" value="0"></div>
-        <div class="stat-input"><label>Терм.защита (%):</label><input type="number" id="artThermProtection" step="0.1" value="0"></div>
-        <div class="stat-input"><label>Элек.защита (%):</label><input type="number" id="artElecProtection" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Защита от Химических аномалий (%):</label><input type="number" id="artChemProtection" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Защита от Гравитационных аномалий (%):</label><input type="number" id="artGravProtection" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Защита от Термических аномалий (%):</label><input type="number" id="artThermProtection" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Защита от Электрических аномалий (%):</label><input type="number" id="artElecProtection" step="0.1" value="0"></div>
         <div class="stat-input"><label>Кровь:</label><input type="number" id="artBlood" step="0.1" value="0"></div>
         <div class="stat-input"><label>Здоровье:</label><input type="number" id="artHealth" step="0.1" value="0"></div>
         <div class="stat-input"><label>Радиация:</label><input type="number" id="artRadiation" step="0.1" value="0"></div>
-        <div class="stat-input"><label>Защита от ближ.оружия (%):</label><input type="number" id="artMeleeProtection" step="0.1" value="0"></div>
+        <div class="stat-input"><label>Защита от ближнего оружия (%):</label><input type="number" id="artMeleeProtection" step="0.1" value="0"></div>
         <div class="stat-input"><label>Защита от укусов (%):</label><input type="number" id="artBiteProtection" step="0.1" value="0"></div>
         <div class="stat-input"><label>Голод:</label><input type="number" id="artHunger" step="0.1" value="0"></div>
         <div class="stat-input"><label>Жажда:</label><input type="number" id="artThirst" step="0.1" value="0"></div>
         <div class="stat-input"><label>Шок:</label><input type="number" id="artShock" step="0.1" value="0"></div>
         <button type="submit" class="btn small mt-10">+ ДОБАВИТЬ АРТЕФАКТ</button></form></div>`;
+    }
+
     return html;
-}
-function artStat(label, val, unit) {
-    const cls = val >= 0 ? 'positive' : 'negative';
-    const sign = val >= 0 ? '+' : '';
-    return `<div class="stat"><span class="stat-label">${label}:</span><span class="stat-value ${cls}">${sign}${val}${unit}</span></div>`;
 }
 function addArtifact(e) {
     e.preventDefault();
     if (!canEditEntries()) return;
-    const g = id => parseFloat(document.getElementById(id).value) || 0;
     const newId = artifacts.length ? Math.max(...artifacts.map(x=>x.id))+1 : 1;
-    artifacts.push({ id: newId, name: document.getElementById("artName").value.trim(), stamina: g("artStamina"), weight: g("artWeight"), chemProtection: g("artChemProtection"), gravProtection: g("artGravProtection"), thermProtection: g("artThermProtection"), elecProtection: g("artElecProtection"), blood: g("artBlood"), health: g("artHealth"), radiation: g("artRadiation"), meleeProtection: g("artMeleeProtection"), biteProtection: g("artBiteProtection"), hunger: g("artHunger"), thirst: g("artThirst"), shock: g("artShock") });
-    save(STORAGE.artifacts, artifacts); renderContent();
+    const g = id => parseFloat(document.getElementById(id).value) || 0;
+    artifacts.push({
+        id: newId,
+        name: document.getElementById("artName").value.trim(),
+        stamina: g("artStamina"), weight: g("artWeight"),
+        chemProtection: g("artChemProtection"), gravProtection: g("artGravProtection"),
+        thermProtection: g("artThermProtection"), elecProtection: g("artElecProtection"),
+        blood: g("artBlood"), health: g("artHealth"), radiation: g("artRadiation"),
+        meleeProtection: g("artMeleeProtection"), biteProtection: g("artBiteProtection"),
+        hunger: g("artHunger"), thirst: g("artThirst"), shock: g("artShock")
+    });
+    save(STORAGE.artifacts, artifacts);
+    syncStateToCloud();
+    renderContent();
 }
 function editArtifact(id) {
     if (!canEditEntries()) return;
     const a = artifacts.find(x => x.id === id); if (!a) return;
     const name = prompt("Название:", a.name); if (name === null) return;
+    const stamina = prompt("Стамина:", a.stamina); if (stamina === null) return;
+    const weight = prompt("Вес (кг):", a.weight); if (weight === null) return;
+    const chemProtection = prompt("Защита от Химических (%):", a.chemProtection); if (chemProtection === null) return;
+    const gravProtection = prompt("Защита от Гравитационных (%):", a.gravProtection); if (gravProtection === null) return;
+    const thermProtection = prompt("Защита от Термических (%):", a.thermProtection); if (thermProtection === null) return;
+    const elecProtection = prompt("Защита от Электрических (%):", a.elecProtection); if (elecProtection === null) return;
+    const blood = prompt("Кровь:", a.blood); if (blood === null) return;
+    const health = prompt("Здоровье:", a.health); if (health === null) return;
+    const radiation = prompt("Радиация:", a.radiation); if (radiation === null) return;
+    const meleeProtection = prompt("Защита от ближнего оружия (%):", a.meleeProtection); if (meleeProtection === null) return;
+    const biteProtection = prompt("Защита от укусов (%):", a.biteProtection); if (biteProtection === null) return;
+    const hunger = prompt("Голод:", a.hunger); if (hunger === null) return;
+    const thirst = prompt("Жажда:", a.thirst); if (thirst === null) return;
+    const shock = prompt("Шок:", a.shock); if (shock === null) return;
     a.name = name.trim() || a.name;
-    const fields = [['stamina','Стамина'],['weight','Вес (кг)'],['chemProtection','Хим.'],['gravProtection','Грав.'],['thermProtection','Терм.'],['elecProtection','Элек.'],['blood','Кровь'],['health','Здоровье'],['radiation','Радиация'],['meleeProtection','Ближ.оружие'],['biteProtection','Укусы'],['hunger','Голод'],['thirst','Жажда'],['shock','Шок']];
-    for (const [key, label] of fields) {
-        const v = prompt(label + ':', a[key]); if (v === null) return; a[key] = parseFloat(v) || 0;
-    }
-    save(STORAGE.artifacts, artifacts); renderContent();
+    a.stamina = parseFloat(stamina) || 0; a.weight = parseFloat(weight) || 0;
+    a.chemProtection = parseFloat(chemProtection) || 0; a.gravProtection = parseFloat(gravProtection) || 0;
+    a.thermProtection = parseFloat(thermProtection) || 0; a.elecProtection = parseFloat(elecProtection) || 0;
+    a.blood = parseFloat(blood) || 0; a.health = parseFloat(health) || 0;
+    a.radiation = parseFloat(radiation) || 0; a.meleeProtection = parseFloat(meleeProtection) || 0;
+    a.biteProtection = parseFloat(biteProtection) || 0; a.hunger = parseFloat(hunger) || 0;
+    a.thirst = parseFloat(thirst) || 0; a.shock = parseFloat(shock) || 0;
+    save(STORAGE.artifacts, artifacts);
+    syncStateToCloud();
+    renderContent();
 }
 function deleteArtifact(id) {
     if (!canEditEntries()) return;
     if (!confirm("Удалить артефакт?")) return;
-    artifacts = artifacts.filter(a => a.id !== id); save(STORAGE.artifacts, artifacts); renderContent();
+    artifacts = artifacts.filter(a => a.id !== id);
+    save(STORAGE.artifacts, artifacts);
+    syncStateToCloud();
+    renderContent();
 }
 
 function renderBuy() {
-    let html = `<h1>&gt; СКУПКА РЕСУРСОВ_</h1>`;
-    if (!buy.length) html += `<p class="text-warn">// Позиций нет</p>`;
+    let html = `<h1>&gt; СКУПКА РЕСУРСОВ_</h1>
+    <p class="text-warn" style="font-size:12px;">// Список позиций. Любой авторизованный может редактировать.</p>`;
+    if (buy.length === 0) html += `<p class="text-warn">// Позиций нет</p>`;
     else {
         const actions = canEditEntries();
         html += `<table><tr><th>ТОВАР</th><th>ЦЕНА</th>${actions?'<th>ДЕЙСТВИЕ</th>':''}</tr>`;
@@ -1250,160 +1326,178 @@ function renderBuy() {
         html += `</table>`;
     }
     if (canEditEntries()) html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ ПОЗИЦИЮ ]</h3><form onsubmit="addBuy(event)">
-        <div class="row"><div style="flex:2;min-width:200px;"><label>НАИМЕНОВАНИЕ:</label><input type="text" id="buyItem" required></div>
-        <div style="flex:1;min-width:150px;"><label>ЦЕНА:</label><input type="text" id="buyPrice" required></div></div>
+        <div class="row">
+            <div style="flex:2;min-width:200px;"><label>НАИМЕНОВАНИЕ:</label><input type="text" id="buyItem" required></div>
+            <div style="flex:1;min-width:150px;"><label>ЦЕНА:</label><input type="text" id="buyPrice" required></div>
+        </div>
         <button type="submit" class="btn small">+ ДОБАВИТЬ</button></form></div>`;
     html += renderBuyCalculator();
     return html;
 }
-function addBuy(e) { e.preventDefault(); if (!canEditEntries()) return; const newId = buy.length ? Math.max(...buy.map(x=>x.id))+1 : 1; buy.push({ id: newId, item: document.getElementById("buyItem").value.trim(), price: document.getElementById("buyPrice").value.trim() }); save(STORAGE.buy, buy); renderContent(); }
-function editBuy(id) { if (!canEditEntries()) return; const b = buy.find(x=>x.id===id); if (!b) return; const item = prompt("Товар:", b.item); if (item === null) return; const price = prompt("Цена:", b.price); if (price === null) return; b.item = item.trim()||b.item; b.price = price.trim()||b.price; save(STORAGE.buy, buy); renderContent(); }
-function deleteBuy(id) { if (!canEditEntries()) return; if (!confirm("Удалить?")) return; buy = buy.filter(b=>b.id!==id); save(STORAGE.buy, buy); renderContent(); }
+function addBuy(e) { e.preventDefault(); if (!canEditEntries()) return; const newId = buy.length ? Math.max(...buy.map(x=>x.id))+1 : 1; buy.push({ id: newId, item: document.getElementById("buyItem").value.trim(), price: document.getElementById("buyPrice").value.trim() }); save(STORAGE.buy, buy); syncStateToCloud(); renderContent(); }
+function editBuy(id) { if (!canEditEntries()) return; const b = buy.find(x=>x.id===id); if (!b) return; const item = prompt("Товар:", b.item); if (item===null) return; const price = prompt("Цена:", b.price); if (price===null) return; b.item=item.trim()||b.item; b.price=price.trim()||b.price; save(STORAGE.buy, buy); syncStateToCloud(); renderContent(); }
+function deleteBuy(id) { if (!canEditEntries()) return; if (!confirm("Удалить позицию?")) return; buy = buy.filter(b=>b.id!==id); save(STORAGE.buy, buy); syncStateToCloud(); renderContent(); }
 
 function renderBuyCalculator() {
     return `
 <div class="calculator">
     <h3>[ КАЛЬКУЛЯТОР СКУПКИ ]</h3>
-    <p class="text-warn" style="font-size:12px;margin-bottom:15px;">// Комиссия ISG вычитается из суммы.</p>
+    <p class="text-warn" style="font-size:12px;margin-bottom:15px;">// Выберите позиции и укажите количество. Комиссия ISG вычитается из суммы.</p>
     <div id="buyCalcItems"></div>
     <button class="btn small" onclick="addBuyCalcItem()" style="margin-bottom:15px;">+ ДОБАВИТЬ ПОЗИЦИЮ</button>
     <div class="calc-percent-row">
         <label style="flex-shrink:0;">КОМИССИЯ ISG (%):</label>
         <input type="number" id="buyCalcPercent" min="0" max="100" step="0.1" value="0" onchange="updateBuyCalc()" oninput="updateBuyCalc()">
-        <span class="percent-info">// Удержание группы</span>
+        <span class="percent-info">// Процент удержания группы от суммы сделки</span>
     </div>
-    <div class="calc-total" id="buyCalcTotal"><div class="total-line"><span>СУММА:</span><span>0 у.е.</span></div><div class="total-line sub"><span>КОМИССИЯ (0%):</span><span>−0 у.е.</span></div><div class="total-line final"><span>К ВЫПЛАТЕ:</span><span>0 у.е.</span></div></div>
+    <div class="calc-total" id="buyCalcTotal">
+        <div class="total-line"><span>СУММА:</span><span>0 у.е.</span></div>
+        <div class="total-line sub"><span>КОМИССИЯ (0%):</span><span>−0 у.е.</span></div>
+        <div class="total-line final"><span>К ВЫПЛАТЕ:</span><span>0 у.е.</span></div>
+    </div>
     <button class="btn danger small" onclick="clearBuyCalc()" style="margin-top:10px;">ОЧИСТИТЬ</button>
 </div>`;
 }
 let buyCalcCounter = 0;
 function addBuyCalcItem() {
     buyCalcCounter++;
-    const c = document.getElementById("buyCalcItems"); if (!c) return;
+    const container = document.getElementById("buyCalcItems"); if (!container) return;
     const div = document.createElement("div"); div.className = "calc-item"; div.id = `buy-calc-item-${buyCalcCounter}`;
-    let options = '<option value="">-- Выберите --</option>';
+    let options = '<option value="">-- Выберите товар --</option>';
     buy.forEach(b => options += `<option value="${b.id}" data-price="${b.price}">${escapeHtml(b.item)}</option>`);
-    div.innerHTML = `<select onchange="updateBuyCalc()">${options}</select><input type="number" min="1" value="1" oninput="updateBuyCalc()" onchange="updateBuyCalc()"><div class="item-price">0 у.е.</div><button class="btn danger small" onclick="removeBuyCalcItem(${buyCalcCounter})">×</button>`;
-    c.appendChild(div); updateBuyCalc();
+    div.innerHTML = `<select onchange="updateBuyCalc()">${options}</select><input type="number" min="1" value="1" onchange="updateBuyCalc()" oninput="updateBuyCalc()" placeholder="Кол-во"><div class="item-price">0 у.е.</div><button class="btn danger small" onclick="removeBuyCalcItem(${buyCalcCounter})">×</button>`;
+    container.appendChild(div); updateBuyCalc();
 }
-function removeBuyCalcItem(id) { const el = document.getElementById(`buy-calc-item-${id}`); if (el) { el.remove(); updateBuyCalc(); } }
+function removeBuyCalcItem(id) { const item = document.getElementById(`buy-calc-item-${id}`); if (item) { item.remove(); updateBuyCalc(); } }
 function updateBuyCalc() {
     let subtotal = 0;
     document.querySelectorAll("#buyCalcItems .calc-item").forEach(item => {
-        const sel = item.querySelector("select"), qty = parseInt(item.querySelector("input").value) || 0;
-        const opt = sel.options[sel.selectedIndex];
-        const price = parseFloat((opt?.dataset.price || "0").replace(/[^0-9.]/g, '')) || 0;
-        const t = price * qty; item.querySelector(".item-price").textContent = `${t} у.е.`; subtotal += t;
+        const select = item.querySelector("select"), qtyInput = item.querySelector("input"), priceDiv = item.querySelector(".item-price");
+        const selectedOption = select.options[select.selectedIndex];
+        const priceText = selectedOption ? selectedOption.dataset.price : "0";
+        const qty = parseInt(qtyInput.value) || 0;
+        const price = parseFloat(priceText.replace(/[^0-9.]/g, '')) || 0;
+        const itemTotal = price * qty;
+        priceDiv.textContent = `${itemTotal} у.е.`;
+        subtotal += itemTotal;
     });
-    const percent = parseFloat(document.getElementById("buyCalcPercent")?.value || 0) || 0;
+    const percentInput = document.getElementById("buyCalcPercent");
+    const percent = parseFloat(percentInput ? percentInput.value : 0) || 0;
     const commission = subtotal * percent / 100, payout = subtotal - commission;
-    const td = document.getElementById("buyCalcTotal");
-    if (td) td.innerHTML = `<div class="total-line"><span>СУММА:</span><span>${subtotal} у.е.</span></div><div class="total-line sub"><span>КОМИССИЯ (${percent}%):</span><span>−${commission.toFixed(2)} у.е.</span></div><div class="total-line final"><span>К ВЫПЛАТЕ:</span><span>${payout.toFixed(2)} у.е.</span></div>`;
+    const totalDiv = document.getElementById("buyCalcTotal");
+    if (totalDiv) totalDiv.innerHTML = `<div class="total-line"><span>СУММА:</span><span>${subtotal} у.е.</span></div><div class="total-line sub"><span>КОМИССИЯ (${percent}%):</span><span>−${commission.toFixed(2)} у.е.</span></div><div class="total-line final"><span>К ВЫПЛАТЕ:</span><span>${payout.toFixed(2)} у.е.</span></div>`;
 }
-function clearBuyCalc() { const c = document.getElementById("buyCalcItems"); if (c) c.innerHTML = ""; const p = document.getElementById("buyCalcPercent"); if (p) p.value = 0; updateBuyCalc(); }
+function clearBuyCalc() { const container = document.getElementById("buyCalcItems"); if (container) container.innerHTML = ""; const percentInput = document.getElementById("buyCalcPercent"); if (percentInput) percentInput.value = 0; updateBuyCalc(); }
 
 function renderSell() {
     let html = `<h1>&gt; КАТАЛОГ ПРОДАЖ_</h1>
-    <p class="text-warn" style="font-size:12px;">// Группы товаров. Клик по заголовку — свернуть/развернуть.</p>`;
-    if (!sell.length) html += `<p class="text-warn">// Каталог пуст</p>`;
+    <p class="text-warn" style="font-size:12px;">// Каталог сгруппирован по категориям. Клик по заголовку — свернуть/развернуть.</p>`;
+    if (sell.length === 0) html += `<p class="text-warn">// Каталог пуст</p>`;
     else {
         const actions = canEditEntries();
-        const groups = {}; sell.forEach(s => { const g = s.group || "Без группы"; (groups[g] = groups[g] || []).push(s); });
+        const groups = {};
+        sell.forEach(s => { const g = s.group || "Без группы"; if (!groups[g]) groups[g] = []; groups[g].push(s); });
         html += `<div class="group-controls"><button class="btn small" onclick="toggleAllGroups(false)">▾ РАЗВЕРНУТЬ ВСЕ</button><button class="btn small warn" onclick="toggleAllGroups(true)">▸ СВЕРНУТЬ ВСЕ</button></div>`;
         Object.keys(groups).sort().forEach(groupName => {
-            const gid = "group_" + groupName.replace(/\s+/g, '_');
-            const collapsed = collapsedGroups[gid] === true;
-            html += `<div class="group-header ${collapsed?'is-collapsed':''}" onclick="toggleGroup('${gid}')" data-group-id="${gid}"><span class="group-title">${escapeHtml(groupName)}</span><span class="group-count">[${groups[groupName].length}]</span><span class="group-toggle">${collapsed?'+':'−'}</span></div>
-            <div class="group-content ${collapsed?'collapsed':''}" id="content_${gid}">
-            <table><tr><th>ТОВАР</th><th>ЦЕНА</th>${actions?'<th>ДЕЙСТВИЕ</th>':''}</tr>`;
+            const groupId = "group_" + groupName.replace(/\s+/g, '_');
+            const isCollapsed = collapsedGroups[groupId] === true;
+            const count = groups[groupName].length;
+            html += `<div class="group-header ${isCollapsed?'is-collapsed':''}" onclick="toggleGroup('${groupId}')" data-group-id="${groupId}"><span class="group-title">${escapeHtml(groupName)}</span><span class="group-count">[${count}]</span><span class="group-toggle">${isCollapsed?'+':'−'}</span></div>
+            <div class="group-content ${isCollapsed?'collapsed':''}" id="content_${groupId}">
+            <table><tr><th>ТОВАР / УСЛУГА</th><th>ЦЕНА</th>${actions?'<th>ДЕЙСТВИЕ</th>':''}</tr>`;
             groups[groupName].forEach(s => html += `<tr><td>${escapeHtml(s.item)}</td><td>${escapeHtml(s.price)}</td>${actions?`<td><button class="btn warn small" onclick="event.stopPropagation();editSell(${s.id})">✎</button> <button class="btn danger small" onclick="event.stopPropagation();deleteSell(${s.id})">×</button></td>`:''}</tr>`);
             html += `</table></div>`;
         });
     }
     if (canEditEntries()) html += `<div class="form-block mt-10"><h3>[ ДОБАВИТЬ ПОЗИЦИЮ ]</h3><form onsubmit="addSell(event)">
-        <div class="row"><div style="flex:2;min-width:200px;"><label>НАИМЕНОВАНИЕ:</label><input type="text" id="sellItem" required></div>
-        <div style="flex:1;min-width:150px;"><label>ЦЕНА:</label><input type="text" id="sellPrice" required></div>
-        <div style="flex:1;min-width:150px;"><label>ГРУППА:</label><input type="text" id="sellGroup" required placeholder="напр. Снаряжение"></div></div>
+        <div class="row">
+            <div style="flex:2;min-width:200px;"><label>НАИМЕНОВАНИЕ:</label><input type="text" id="sellItem" required></div>
+            <div style="flex:1;min-width:150px;"><label>ЦЕНА:</label><input type="text" id="sellPrice" required></div>
+            <div style="flex:1;min-width:150px;"><label>ГРУППА:</label><input type="text" id="sellGroup" required placeholder="напр. Снаряжение"></div>
+        </div>
         <button type="submit" class="btn small">+ ДОБАВИТЬ</button></form></div>`;
     html += renderSellCalculator();
     return html;
 }
-function toggleGroup(gid) {
-    const c = document.getElementById("content_" + gid), h = document.querySelector(`.group-header[data-group-id="${gid}"]`);
-    if (!c || !h) return;
-    if (c.classList.contains("collapsed")) { c.classList.remove("collapsed"); h.classList.remove("is-collapsed"); h.querySelector(".group-toggle").textContent="−"; collapsedGroups[gid]=false; }
-    else { c.classList.add("collapsed"); h.classList.add("is-collapsed"); h.querySelector(".group-toggle").textContent="+"; collapsedGroups[gid]=true; }
+function toggleGroup(groupId) {
+    const content = document.getElementById("content_" + groupId), header = document.querySelector(`.group-header[data-group-id="${groupId}"]`);
+    if (!content || !header) return;
+    if (content.classList.contains("collapsed")) { content.classList.remove("collapsed"); header.classList.remove("is-collapsed"); header.querySelector(".group-toggle").textContent="−"; collapsedGroups[groupId]=false; }
+    else { content.classList.add("collapsed"); header.classList.add("is-collapsed"); header.querySelector(".group-toggle").textContent="+"; collapsedGroups[groupId]=true; }
 }
 function toggleAllGroups(collapse) {
     document.querySelectorAll(".group-content").forEach(c => { const gid = c.id.replace("content_",""); c.classList.toggle("collapsed", collapse); collapsedGroups[gid] = collapse; });
     document.querySelectorAll(".group-header").forEach(h => { const t = h.querySelector(".group-toggle"); h.classList.toggle("is-collapsed", collapse); if (t) t.textContent = collapse ? "+" : "−"; });
 }
-function restoreGroupStates() { Object.keys(collapsedGroups).forEach(gid => { const c=document.getElementById("content_"+gid),h=document.querySelector(`.group-header[data-group-id="${gid}"]`); if (!c||!h) return; if (collapsedGroups[gid]) { c.classList.add("collapsed"); h.classList.add("is-collapsed"); const t=h.querySelector(".group-toggle"); if(t)t.textContent="+"; } else { c.classList.remove("collapsed"); h.classList.remove("is-collapsed"); const t=h.querySelector(".group-toggle"); if(t)t.textContent="−"; } }); }
-
+function restoreGroupStates() {
+    Object.keys(collapsedGroups).forEach(gid => {
+        const c = document.getElementById("content_" + gid), h = document.querySelector(`.group-header[data-group-id="${gid}"]`);
+        if (!c || !h) return;
+        if (collapsedGroups[gid]) { c.classList.add("collapsed"); h.classList.add("is-collapsed"); const t=h.querySelector(".group-toggle"); if(t)t.textContent="+"; }
+        else { c.classList.remove("collapsed"); h.classList.remove("is-collapsed"); const t=h.querySelector(".group-toggle"); if(t)t.textContent="−"; }
+    });
+}
 function renderSellCalculator() {
-    return `
-<div class="calculator">
-    <h3>[ КАЛЬКУЛЯТОР ПРОДАЖИ ]</h3>
-    <div id="sellCalcItems"></div>
-    <button class="btn small" onclick="addSellCalcItem()" style="margin-bottom:15px;">+ ДОБАВИТЬ ПОЗИЦИЮ</button>
-    <div class="calc-total" id="sellCalcTotal"><div class="total-line final"><span>ИТОГО К ОПЛАТЕ:</span><span>0 у.е.</span></div></div>
-    <button class="btn danger small" onclick="clearSellCalc()" style="margin-top:10px;">ОЧИСТИТЬ</button>
-</div>`;
+    return `<div class="calculator"><h3>[ КАЛЬКУЛЯТОР ПРОДАЖИ ]</h3><p class="text-warn" style="font-size:12px;margin-bottom:15px;">// Выберите товары и укажите количество.</p><div id="sellCalcItems"></div><button class="btn small" onclick="addSellCalcItem()" style="margin-bottom:15px;">+ ДОБАВИТЬ ПОЗИЦИЮ</button><div class="calc-total" id="sellCalcTotal"><div class="total-line final"><span>ИТОГО К ОПЛАТЕ:</span><span>0 у.е.</span></div></div><button class="btn danger small" onclick="clearSellCalc()" style="margin-top:10px;">ОЧИСТИТЬ</button></div>`;
 }
 let sellCalcCounter = 0;
 function addSellCalcItem() {
     sellCalcCounter++;
-    const c = document.getElementById("sellCalcItems"); if (!c) return;
+    const container = document.getElementById("sellCalcItems"); if (!container) return;
     const div = document.createElement("div"); div.className = "calc-item"; div.id = `sell-calc-item-${sellCalcCounter}`;
-    let options = '<option value="">-- Выберите --</option>';
-    sell.forEach(s => options += `<option value="${s.id}" data-price="${s.price}">${escapeHtml(s.item)} [${escapeHtml(s.group||'—')}]</option>`);
-    div.innerHTML = `<select onchange="updateSellCalc()">${options}</select><input type="number" min="1" value="1" oninput="updateSellCalc()"><div class="item-price">0 у.е.</div><button class="btn danger small" onclick="removeSellCalcItem(${sellCalcCounter})">×</button>`;
-    c.appendChild(div); updateSellCalc();
+    let options = '<option value="">-- Выберите товар --</option>';
+    sell.forEach(s => options += `<option value="${s.id}" data-price="${s.price}">${escapeHtml(s.item)} [${escapeHtml(s.group || 'Без группы')}]</option>`);
+    div.innerHTML = `<select onchange="updateSellCalc()">${options}</select><input type="number" min="1" value="1" onchange="updateSellCalc()" oninput="updateSellCalc()" placeholder="Кол-во"><div class="item-price">0 у.е.</div><button class="btn danger small" onclick="removeSellCalcItem(${sellCalcCounter})">×</button>`;
+    container.appendChild(div); updateSellCalc();
 }
-function removeSellCalcItem(id) { const el = document.getElementById(`sell-calc-item-${id}`); if (el) { el.remove(); updateSellCalc(); } }
+function removeSellCalcItem(id) { const item = document.getElementById(`sell-calc-item-${id}`); if (item) { item.remove(); updateSellCalc(); } }
 function updateSellCalc() {
     let subtotal = 0;
     document.querySelectorAll("#sellCalcItems .calc-item").forEach(item => {
-        const sel = item.querySelector("select"), qty = parseInt(item.querySelector("input").value) || 0;
-        const opt = sel.options[sel.selectedIndex];
-        const price = parseFloat((opt?.dataset.price || "0").replace(/[^0-9.]/g, '')) || 0;
-        const t = price * qty; item.querySelector(".item-price").textContent = `${t} у.е.`; subtotal += t;
+        const select = item.querySelector("select"), qtyInput = item.querySelector("input"), priceDiv = item.querySelector(".item-price");
+        const selectedOption = select.options[select.selectedIndex];
+        const priceText = selectedOption ? selectedOption.dataset.price : "0";
+        const qty = parseInt(qtyInput.value) || 0;
+        const price = parseFloat(priceText.replace(/[^0-9.]/g, '')) || 0;
+        const itemTotal = price * qty;
+        priceDiv.textContent = `${itemTotal} у.е.`;
+        subtotal += itemTotal;
     });
-    const td = document.getElementById("sellCalcTotal");
-    if (td) td.innerHTML = `<div class="total-line final"><span>ИТОГО К ОПЛАТЕ:</span><span>${subtotal.toFixed(2)} у.е.</span></div>`;
+    const totalDiv = document.getElementById("sellCalcTotal");
+    if (totalDiv) totalDiv.innerHTML = `<div class="total-line final"><span>ИТОГО К ОПЛАТЕ:</span><span>${subtotal.toFixed(2)} у.е.</span></div>`;
 }
-function clearSellCalc() { const c = document.getElementById("sellCalcItems"); if (c) c.innerHTML = ""; updateSellCalc(); }
-
-function addSell(e) { e.preventDefault(); if (!canEditEntries()) return; const newId = sell.length ? Math.max(...sell.map(x=>x.id))+1 : 1; sell.push({ id: newId, item: document.getElementById("sellItem").value.trim(), price: document.getElementById("sellPrice").value.trim(), group: document.getElementById("sellGroup").value.trim() }); save(STORAGE.sell, sell); renderContent(); }
-function editSell(id) { if (!canEditEntries()) return; const s = sell.find(x=>x.id===id); if (!s) return; const item = prompt("Товар:", s.item); if (item===null) return; const price = prompt("Цена:", s.price); if (price===null) return; const group = prompt("Группа:", s.group); if (group===null) return; s.item=item.trim()||s.item; s.price=price.trim()||s.price; s.group=group.trim()||s.group; save(STORAGE.sell, sell); renderContent(); }
-function deleteSell(id) { if (!canEditEntries()) return; if (!confirm("Удалить?")) return; sell = sell.filter(s=>s.id!==id); save(STORAGE.sell, sell); renderContent(); }
+function clearSellCalc() { const container = document.getElementById("sellCalcItems"); if (container) container.innerHTML = ""; updateSellCalc(); }
+function addSell(e) { e.preventDefault(); if (!canEditEntries()) return; const newId = sell.length ? Math.max(...sell.map(x=>x.id))+1 : 1; sell.push({ id: newId, item: document.getElementById("sellItem").value.trim(), price: document.getElementById("sellPrice").value.trim(), group: document.getElementById("sellGroup").value.trim() }); save(STORAGE.sell, sell); syncStateToCloud(); renderContent(); }
+function editSell(id) { if (!canEditEntries()) return; const s = sell.find(x=>x.id===id); if (!s) return; const item = prompt("Товар:", s.item); if (item===null) return; const price = prompt("Цена:", s.price); if (price===null) return; const group = prompt("Группа:", s.group); if (group===null) return; s.item=item.trim()||s.item; s.price=price.trim()||s.price; s.group=group.trim()||s.group; save(STORAGE.sell, sell); syncStateToCloud(); renderContent(); }
+function deleteSell(id) { if (!canEditEntries()) return; if (!confirm("Удалить позицию?")) return; sell = sell.filter(s=>s.id!==id); save(STORAGE.sell, sell); syncStateToCloud(); renderContent(); }
 
 function renderReports() {
     let html = `<h1>&gt; ЛЕНТА ОТЧЁТОВ_</h1>`;
     if (!isGuest()) html += `<div class="form-block"><h3>[ НОВЫЙ ОТЧЁТ ]</h3><form onsubmit="addReport(event)">
         <label>ЗАГОЛОВОК:</label><input type="text" id="repTitle" required maxlength="100">
-        <label>ДОСТУП:</label><select id="repAccess"><option value="boets">БОЕЦ</option><option value="sovet">СОВЕТ</option></select>
+        <label>УРОВЕНЬ ДОСТУПА:</label><select id="repAccess"><option value="boets">БОЕЦ</option><option value="sovet">СОВЕТ</option></select>
         <label>ТЕКСТ:</label><textarea id="repText" required rows="5"></textarea>
         <button type="submit" class="btn">→ ОПУБЛИКОВАТЬ</button></form></div>`;
-    const visible = [...reports].sort((a,b)=>b.id-a.id).filter(canSeeReport);
-    if (!visible.length) html += `<p class="text-warn">// Отчётов нет</p>`;
+    const sorted = [...reports].sort((a,b)=>b.id-a.id);
+    const visible = sorted.filter(canSeeReport);
+    if (visible.length === 0) html += `<p class="text-warn">// Отчётов нет</p>`;
     else visible.forEach(r => {
         const restricted = r.access === "sovet";
         html += `<div class="report ${restricted?'restricted':''}">
-            <div class="meta">#${r.id} · ${escapeHtml(r.date)} · АВТОР: ${escapeHtml(r.author)} [${r.role.toUpperCase()}] · ДОСТУП: ${r.access.toUpperCase()}${restricted?' · <span class="text-warn">[ТОЛЬКО СОВЕТ]</span>':''}</div>
+            <div class="meta">#${r.id} · ${escapeHtml(r.date)} · АВТОР: ${escapeHtml(r.author)} [${r.role.toUpperCase()}] · ДОСТУП: ${r.access.toUpperCase()}${restricted?' · <span class="text-warn">[ТОЛЬКО ДЛЯ СОВЕТА]</span>':''}</div>
             <div class="title">&gt; ${escapeHtml(r.title)}</div>
             <div class="body">${escapeHtml(r.text)}</div>
-            <div class="actions">${canEditReport(r)?`<button class="btn small" onclick="editReport(${r.id})">✎ РЕД.</button>`:''}${canDeleteReport(r)?`<button class="btn danger small" onclick="deleteReport(${r.id})">×</button>`:''}</div>
+            <div class="actions">${canEditReport(r)?`<button class="btn small" onclick="editReport(${r.id})">✎ РЕДАКТИРОВАТЬ</button>`:''}${canDeleteReport(r)?`<button class="btn danger small" onclick="deleteReport(${r.id})">×</button>`:''}</div>
         </div>`;
     });
     return html;
 }
-function addReport(e) { e.preventDefault(); if (isGuest()) return; const newId = reports.length ? Math.max(...reports.map(x=>x.id))+1 : 1; reports.push({ id: newId, title: document.getElementById("repTitle").value.trim(), author: session.callsign, role: session.role, access: document.getElementById("repAccess").value, date: new Date().toISOString().slice(0,10), text: document.getElementById("repText").value.trim() }); save(STORAGE.reports, reports); renderContent(); }
-function deleteReport(id) { const r = reports.find(x=>x.id===id); if (!r || !canDeleteReport(r)) return; if (!confirm(`Удалить "${r.title}"?`)) return; reports = reports.filter(x=>x.id!==id); save(STORAGE.reports, reports); renderContent(); }
-function editReport(id) { const r = reports.find(x=>x.id===id); if (!r || !canEditReport(r)) return; const t = prompt("Заголовок:", r.title); if (t===null) return; const n = prompt("Текст:", r.text); if (n===null) return; r.title=t.trim()||r.title; r.text=n.trim()||r.text; save(STORAGE.reports, reports); renderContent(); }
+function addReport(e) { e.preventDefault(); if (isGuest()) return; const newId = reports.length ? Math.max(...reports.map(x=>x.id))+1 : 1; reports.push({ id: newId, title: document.getElementById("repTitle").value.trim(), author: session.callsign, role: session.role, access: document.getElementById("repAccess").value, date: new Date().toISOString().slice(0,10), text: document.getElementById("repText").value.trim() }); save(STORAGE.reports, reports); syncStateToCloud(); renderContent(); }
+function deleteReport(id) { const r = reports.find(x=>x.id===id); if (!r || !canDeleteReport(r)) return; if (!confirm(`Удалить "${r.title}"?`)) return; reports = reports.filter(x=>x.id!==id); save(STORAGE.reports, reports); syncStateToCloud(); renderContent(); }
+function editReport(id) { const r = reports.find(x=>x.id===id); if (!r || !canEditReport(r)) return; const t = prompt("Заголовок:", r.title); if (t===null) return; const n = prompt("Текст:", r.text); if (n===null) return; r.title=t.trim()||r.title; r.text=n.trim()||r.text; save(STORAGE.reports, reports); syncStateToCloud(); renderContent(); }
 
 function openAdmin() {
-    if (!canManageTabs()) { alert("[ОТКАЗ]"); return; }
+    if (!canManageTabs()) { alert("[ОТКАЗ] Только Совет."); return; }
     renderAdmin();
     renderFirebasePanel();
     openModal("adminModal");
@@ -1442,7 +1536,8 @@ function registerFighter(e) {
     if (callsign === SOVET_CALLSIGN) { alert("[ОШИБКА] Зарезервирован."); return; }
     const fighter = { callsign, password, rank, status, note };
     fighters.push(fighter);
-    save(STORAGE.fighters, fighters); // авто-синхронизация в облако
+    save(STORAGE.fighters, fighters);
+    syncStateToCloud();
     e.target.reset();
     renderAdmin();
     renderFirebasePanel();
@@ -1454,7 +1549,9 @@ function removeFighter(callsign) {
     if (!isSovet()) return;
     if (!confirm(`Удалить "${callsign}"?`)) return;
     fighters = fighters.filter(f => f.callsign !== callsign);
-    save(STORAGE.fighters, fighters); renderAdmin();
+    save(STORAGE.fighters, fighters);
+    syncStateToCloud();
+    renderAdmin();
 }
 
 function addTab(e) {
@@ -1465,13 +1562,17 @@ function addTab(e) {
     const role = document.getElementById("newTabRole").value;
     if (tabs.some(t => t.id === id)) { alert("[ОШИБКА] ID существует."); return; }
     tabs.push({ id, label, minRole: role });
-    save(STORAGE.tabs, tabs); e.target.reset(); renderAdmin(); renderMenu();
+    save(STORAGE.tabs, tabs);
+    syncStateToCloud();
+    e.target.reset(); renderAdmin(); renderMenu();
 }
 function removeTab(id) {
     if (!canManageTabs()) return;
     if (["home","reports"].includes(id)) { alert("[ОТКАЗ] Базовая вкладка."); return; }
     if (!confirm(`Удалить "${id}"?`)) return;
-    tabs = tabs.filter(t => t.id !== id); save(STORAGE.tabs, tabs);
+    tabs = tabs.filter(t => t.id !== id);
+    save(STORAGE.tabs, tabs);
+    syncStateToCloud();
     if (activeTab === id) activeTab = "home";
     renderAdmin(); renderMenu(); renderContent();
 }
@@ -1489,6 +1590,7 @@ function resetAll() {
         const key = ['tabs','fighters','stalkers','trusted','artifacts','buy','sell','reports'][i];
         save(STORAGE[key], v);
     });
+    syncStateToCloud();
     activeTab = "home"; collapsedGroups = {};
     renderAll();
     alert("[СИСТЕМА] Данные сброшены.");
@@ -1501,14 +1603,10 @@ function escapeHtml(s) {
 
 function renderAll() { renderMenu(); renderContent(); }
 
-/* ============================================================
-   ИНИЦИАЛИЗАЦИЯ
-   ============================================================ */
 document.getElementById("nodeId").textContent = "ISG-" + (1000 + Math.floor(Math.random()*9000));
 renderAll();
 updateConnectionIndicator();
 
-// авто-подключение к Firebase, если был настроен ранее
 if (typeof window.firebase !== 'undefined') tryAutoConnect();
 
 document.querySelectorAll(".modal").forEach(m => { m.addEventListener("click", (e) => { if (e.target === m) m.classList.remove("open"); }); });
